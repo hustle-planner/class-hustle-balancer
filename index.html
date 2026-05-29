@@ -2224,6 +2224,10 @@
       return day !== null && dateKey === weekDateForDay(day) ? day : null;
     }
 
+    function isPlacedTask(task) {
+      return task.status === 'scheduled' && task.deadline && task.scheduled_time && taskScheduledDayForCurrentWeek(task) !== null;
+    }
+
     function syncTaskScheduleFields(task) {
       if (task.status !== 'scheduled') {
         if (task.status === 'unscheduled' || task.status === 'deferred') {
@@ -2698,10 +2702,10 @@
       let locked = [];
 
       if (mode === 'remaining') {
-        locked = tasks.filter(task => task.status === 'scheduled' && taskScheduledDayForCurrentWeek(task) !== null && task.scheduled_time);
+        locked = tasks.filter(isPlacedTask);
         schedulable = tasks.filter(task => task.status === 'unscheduled');
       } else if (mode === 'single') {
-        locked = tasks.filter(task => task.id !== options.taskId && task.status === 'scheduled' && taskScheduledDayForCurrentWeek(task) !== null && task.scheduled_time);
+        locked = tasks.filter(task => task.id !== options.taskId && isPlacedTask(task));
         schedulable = tasks.filter(task => task.id === options.taskId);
         schedulable.forEach(task => {
           task.status = 'unscheduled';
@@ -2709,12 +2713,8 @@
           task.scheduled_time = null;
         });
       } else {
-        schedulable = tasks.filter(task => task.status === 'unscheduled' || task.status === 'scheduled');
-        schedulable.forEach(task => {
-          task.status = 'unscheduled';
-          task.scheduled_day = null;
-          task.scheduled_time = null;
-        });
+        locked = tasks.filter(isPlacedTask);
+        schedulable = [];
       }
 
       const freeBlocks = buildFreeBlocks(locked).sort((a, b) => (a.day - b.day) || (a.start - b.start));
@@ -3392,7 +3392,7 @@
         collaborator_label: $('#addCollab').checked ? String(data.get('collaborator_label') || '').trim() : null,
         status: hasScheduledDateTime ? 'scheduled' : 'unscheduled',
         scheduled_day: hasScheduledDateTime ? (new Date(`${deadline}T00:00:00`).getDay() + 6) % 7 : null,
-        scheduled_time: hasScheduledDateTime ? scheduledTime : null
+        scheduled_time: scheduledTime || null
       };
       if (!draft.name) {
         $('#addTaskError').textContent = 'Task name is required.';
