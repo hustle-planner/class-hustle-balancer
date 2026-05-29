@@ -831,6 +831,23 @@
       gap: var(--space-3);
     }
 
+    .mobile-account-panel {
+      display: none;
+    }
+
+    .mobile-theme-toggle {
+      display: none;
+    }
+
+    .mobile-account-email {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--color-text);
+      font-weight: 700;
+    }
+
     .class-list {
       display: grid;
       gap: var(--space-2);
@@ -1203,44 +1220,435 @@
       }
     }
 
-    @media (max-width: 767px) {
-      .page-title {
-        font-size: 1.35rem;
-      }
-
-      .subtitle {
-        display: none;
-      }
-
-      .sync-error {
-        max-width: 44vw;
-      }
-
-      .week-grid,
-      .skeleton {
-        display: grid;
-        grid-template-columns: 1fr;
+    @media (max-width: 768px) {
+      html,
+      body {
+        width: 100%;
         min-width: 0;
+        overflow-x: hidden;
+      }
+
+      body {
+        font-size: 15px;
+      }
+
+      button,
+      .icon-button,
+      .primary-btn,
+      .secondary-btn,
+      .danger-btn,
+      .toggle-pill,
+      .day-toggle,
+      .bottom-tab {
+        min-width: 44px;
+        min-height: 44px;
+      }
+
+      input,
+      select,
+      textarea {
+        font-size: 16px;
+      }
+
+      label,
+      .field-label,
+      .eyebrow,
+      .bucket-badge,
+      .status-badge,
+      .deadline-badge,
+      .count-badge {
+        font-size: max(11px, var(--text-xs));
+      }
+
+      .main {
+        width: 100vw;
+        height: 100dvh;
+        overflow: hidden;
+        padding-bottom: calc(64px + env(safe-area-inset-bottom));
+      }
+
+      .topbar {
+        min-height: 60px;
+        padding: 10px 12px;
+        gap: 10px;
+        backdrop-filter: none;
+      }
+
+      .title-wrap {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .title-wrap::before {
+        content: "";
+        flex: 0 0 auto;
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        background:
+          radial-gradient(circle at 72% 32%, #6daa45 0 4px, transparent 5px),
+          linear-gradient(#f9f8f5 0 0) 9px 13px / 15px 3px no-repeat,
+          linear-gradient(#f9f8f5 0 0) 9px 19px / 20px 3px no-repeat,
+          linear-gradient(#f9f8f5 0 0) 9px 25px / 17px 3px no-repeat,
+          var(--color-primary);
+      }
+
+      .page-title {
+        min-width: 0;
+        max-width: 56vw;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 0;
+        line-height: 1.15;
+      }
+
+      .page-title::after {
+        content: "Hustle Planner";
+        font-size: 1.08rem;
+      }
+
+      .subtitle,
+      .topbar .user-chip,
+      .topbar #logoutButton,
+      .topbar .sync-error {
+        display: none !important;
+      }
+
+      .topbar > div:last-child {
+        flex: 0 0 auto;
+        gap: 8px !important;
+      }
+
+      .mobile-add {
+        width: 44px;
+        padding: 0;
+      }
+
+      .mobile-theme-toggle {
+        display: inline-flex;
+        width: 44px;
+        height: 44px;
+      }
+
+      .sync-indicator {
+        width: 24px;
+        height: 24px;
+      }
+
+      .view {
+        height: calc(100dvh - 60px - 64px - env(safe-area-inset-bottom));
+        padding: 12px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .warning-banner {
+        align-items: flex-start;
+        padding: 12px;
+        font-size: 15px;
+      }
+
+      .week-grid {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(100px, calc(100vw - 24px));
+        grid-template-columns: none;
+        gap: 12px;
+        min-width: 0;
+        width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scroll-snap-type: x mandatory;
+        scroll-padding-inline: 0;
+        padding-bottom: 8px;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .skeleton {
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(100px, calc(100vw - 24px));
+        grid-template-columns: none;
+        min-width: 0;
+        overflow-x: hidden;
       }
 
       .day-column {
-        min-height: 720px;
+        min-width: 100px;
+        min-height: calc(100dvh - 148px);
+        scroll-snap-align: start;
+        border-radius: var(--radius-lg);
+      }
+
+      .day-head {
+        padding: 12px 14px;
+        font-size: 17px;
+      }
+
+      .timeline {
+        height: calc(100dvh - 252px);
+        min-height: 560px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .schedule-card {
+        left: 2.55rem;
+        right: 0.5rem;
+        padding: 8px;
+      }
+
+      .card-title,
+      .muted,
+      .class-meta,
+      .capacity-text,
+      .card-meta {
+        font-size: 15px;
+      }
+
+      .time-label {
+        font-size: 11px;
+      }
+
+      .unscheduled-zone {
+        min-height: 52px;
+        margin: 12px;
+        font-size: 15px;
+      }
+
+      .bottom-tabs {
+        min-height: calc(56px + env(safe-area-inset-bottom));
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+
+      .bottom-tab {
+        position: relative;
+        min-height: 56px;
+        padding: 6px 4px;
+        border-top: 2px solid transparent;
+        font-size: 11px;
+      }
+
+      .bottom-tab.active {
+        border-top-color: var(--color-primary);
+      }
+
+      .bottom-tab.active svg {
+        color: var(--color-primary);
+      }
+
+      .inbox-wrap,
+      .settings-wrap,
+      .review-wrap {
+        max-width: none;
+        width: 100%;
+        gap: 12px;
+      }
+
+      .review-card,
+      .settings-card,
+      .bucket-group,
+      .class-form,
+      .empty-state {
+        padding: 16px;
+      }
+
+      .section-title {
+        font-size: 17px;
+        line-height: 1.25;
+      }
+
+      .settings-card {
+        display: grid;
+        gap: 16px;
+        padding: 0;
+        border: 0;
+        border-radius: var(--radius-lg);
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .settings-section {
+        gap: 16px;
+        padding: 16px;
+        margin-top: 0;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        background: var(--color-surface-2);
+      }
+
+      .settings-section:first-of-type {
+        padding-top: 16px;
+        border-top: 1px solid var(--color-border);
+      }
+
+      .settings-section-head {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .settings-section-head > button,
+      #enableNotifications,
+      #openClassForm {
+        width: 100%;
+      }
+
+      .mobile-account-panel {
+        display: grid;
+        gap: 12px;
+        padding: 12px;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        background: var(--color-surface);
+      }
+
+      .mobile-account-panel .secondary-btn {
+        width: 100%;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
       }
 
       .task-row {
-        grid-template-columns: minmax(0, 1fr) 76px 40px;
+        grid-template-columns: minmax(0, 1fr) auto 44px;
+        gap: 10px;
+        min-height: 64px;
+        padding: 14px 12px;
       }
 
       .task-row .hide-sm {
         display: none;
       }
 
-      .form-grid {
-        grid-template-columns: 1fr;
+      .bucket-header,
+      .class-row {
+        padding: 14px 12px;
+      }
+
+      .class-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+
+      .class-row > .color-swatch {
+        display: none;
+      }
+
+      .class-actions .icon-button {
+        width: 44px;
+        height: 44px;
+      }
+
+      .day-toggle-row {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .day-toggle {
+        min-width: 0;
+        padding-inline: 6px;
+      }
+
+      .swatch-row {
+        gap: 12px;
+      }
+
+      .color-swatch {
+        width: 44px;
+        height: 44px;
+      }
+
+      .chart-shell {
+        height: 220px;
+      }
+
+      #reviewChart {
+        width: 100% !important;
+        height: 220px !important;
+      }
+
+      .summary-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .modal-backdrop {
+        align-items: end;
+        padding: 10px;
+        padding-bottom: calc(10px + env(safe-area-inset-bottom));
+      }
+
+      .modal {
+        width: 100%;
+        max-height: calc(100dvh - 20px - env(safe-area-inset-bottom));
+        border-radius: 14px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .modal-head,
+      .modal-body,
+      .modal-actions,
+      .detail-head,
+      .detail-body,
+      .detail-actions,
+      .auth-card {
+        padding: 16px;
+      }
+
+      .modal-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .modal-actions .primary-btn,
+      .modal-actions .secondary-btn {
+        width: 100%;
       }
 
       .detail-panel {
-        width: min(100vw, 360px);
+        width: 100vw;
+        max-width: 100vw;
+        height: 100dvh;
+        border-left: 0;
+      }
+
+      .detail-body {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .detail-actions {
+        padding-bottom: calc(16px + env(safe-area-inset-bottom));
+      }
+
+      .detail-title-input {
+        font-size: 20px;
+      }
+
+      .auth-gate {
+        padding: 16px;
+      }
+
+      .auth-card {
+        width: 100%;
+        max-height: calc(100dvh - 32px);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .auth-card h2 {
+        font-size: 24px;
+      }
+
+      .auth-actions {
+        grid-template-columns: 1fr;
       }
     }
 
@@ -1305,6 +1713,7 @@
           <div class="sync-error" id="syncError" role="status"></div>
           <div class="user-chip" id="userChip"><i data-lucide="user"></i><span id="userEmail"></span></div>
           <button class="secondary-btn" type="button" id="logoutButton" style="display:none;"><i data-lucide="log-out"></i>Log out</button>
+          <button class="icon-button mobile-theme-toggle" id="mobileThemeToggle" aria-label="Toggle theme" title="Toggle theme"><i data-lucide="sun"></i></button>
           <button class="secondary-btn mobile-add" id="mobileAddTask" aria-label="Add task"><i data-lucide="plus"></i></button>
           <div class="sync-indicator" id="syncIndicator" aria-label="Syncing">
             <div class="spinner"></div>
@@ -1348,6 +1757,13 @@
             <form id="settingsForm">
               <div class="settings-section">
                 <h2 class="section-title">Profile</h2>
+                <div class="mobile-account-panel">
+                  <div>
+                    <div class="field-label">Signed in as</div>
+                    <div class="mobile-account-email" id="settingsUserEmail">Not signed in</div>
+                  </div>
+                  <button class="secondary-btn" type="button" id="settingsLogoutButton"><i data-lucide="log-out"></i>Log out</button>
+                </div>
                 <div class="form-grid">
                   <div class="field">
                     <label for="userName">User name</label>
@@ -2493,6 +2909,8 @@
       $('#userChip').classList.toggle('show', signedIn);
       $('#logoutButton').style.display = signedIn ? 'inline-flex' : 'none';
       $('#userEmail').textContent = currentUser?.email || '';
+      const settingsEmail = $('#settingsUserEmail');
+      if (settingsEmail) settingsEmail.textContent = currentUser?.email || 'Not signed in';
       refreshIcons();
     }
 
@@ -2931,18 +3349,30 @@
         .replaceAll("'", '&#039;');
     }
 
-    function bindEvents() {
-      $('#themeToggle').addEventListener('click', () => {
-        theme = theme === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', theme);
-        $('#themeToggle').innerHTML = `<i data-lucide="${theme === 'dark' ? 'moon' : 'sun'}"></i>`;
-        renderReview();
-        refreshIcons();
+    function updateThemeButtons() {
+      const icon = theme === 'dark' ? 'moon' : 'sun';
+      ['#themeToggle', '#mobileThemeToggle'].forEach(selector => {
+        const button = $(selector);
+        if (button) button.innerHTML = `<i data-lucide="${icon}"></i>`;
       });
+    }
+
+    function toggleTheme() {
+      theme = theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+      updateThemeButtons();
+      renderReview();
+      refreshIcons();
+    }
+
+    function bindEvents() {
+      $('#themeToggle').addEventListener('click', toggleTheme);
+      $('#mobileThemeToggle').addEventListener('click', toggleTheme);
 
       $('#authForm').addEventListener('submit', signInWithPassword);
       $('#signUpButton').addEventListener('click', signUpWithPassword);
       $('#logoutButton').addEventListener('click', logOut);
+      $('#settingsLogoutButton').addEventListener('click', logOut);
       $$('.nav-link, .bottom-tab').forEach(btn => btn.addEventListener('click', () => setView(btn.dataset.viewTarget)));
       $('#openAddTask').addEventListener('click', openAddModal);
       $('#mobileAddTask').addEventListener('click', openAddModal);
@@ -3024,7 +3454,7 @@
     }
 
     async function init() {
-      $('#themeToggle').innerHTML = `<i data-lucide="${theme === 'dark' ? 'moon' : 'sun'}"></i>`;
+      updateThemeButtons();
       populateSelects();
       bindEvents();
       renderSettings();
