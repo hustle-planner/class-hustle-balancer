@@ -1413,6 +1413,15 @@
                 </div>
               </form>
             </div>
+            <div class="settings-section">
+              <div class="settings-section-head">
+                <div>
+                  <h2 class="section-title">Notifications</h2>
+                  <div class="muted" id="notificationStatus">Notifications are not enabled.</div>
+                </div>
+                <button class="primary-btn" type="button" id="enableNotifications"><i data-lucide="bell"></i>Enable Notifications</button>
+              </div>
+            </div>
           </section>
         </div>
       </section>
@@ -1825,7 +1834,8 @@
       if (!('serviceWorker' in navigator) || !('Notification' in window)) return null;
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') return null;
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await ensurePushServiceWorkerRegistration();
+      if (!registration) return null;
       const subscription = await subscribeToPush(registration);
       if (subscription) {
         await savePushSubscription(subscription);
@@ -1834,10 +1844,20 @@
       return subscription;
     }
 
+    async function ensurePushServiceWorkerRegistration() {
+      if (!('serviceWorker' in navigator)) return null;
+      let registration = await navigator.serviceWorker.getRegistration('/class-hustle-balancer/');
+      if (!registration) {
+        registration = await navigator.serviceWorker.register('/class-hustle-balancer/sw.js', { scope: '/class-hustle-balancer/' });
+        console.log('PWA service worker registered', registration.scope);
+      }
+      return navigator.serviceWorker.ready;
+    }
+
     async function syncGrantedPushSubscription() {
       if (!('serviceWorker' in navigator) || !('Notification' in window) || Notification.permission !== 'granted') return;
-      const existingRegistration = await navigator.serviceWorker.getRegistration();
-      const reg = existingRegistration || await navigator.serviceWorker.ready;
+      const reg = await ensurePushServiceWorkerRegistration();
+      if (!reg) return;
       const existing = await reg.pushManager.getSubscription();
       if (existing) {
         await savePushSubscription(existing);
@@ -2417,6 +2437,46 @@
       $('#targetBody').value = settings.targets.body;
       renderClassScheduleList();
       renderClassFormControls();
+      updateNotificationSettingsUI();
+    }
+
+    function updateNotificationSettingsUI() {
+      const status = $('#notificationStatus');
+      const button = $('#enableNotifications');
+      if (!status || !button) return;
+      if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+        status.textContent = 'Notifications are not supported in this browser.';
+        button.disabled = true;
+        return;
+      }
+      if (Notification.permission === 'granted') {
+        status.textContent = 'Notifications are enabled. Re-sync if this device changes.';
+        button.innerHTML = '<i data-lucide="bell-ring"></i>Re-sync Notifications';
+      } else if (Notification.permission === 'denied') {
+        status.textContent = 'Notifications are blocked in browser settings.';
+        button.disabled = true;
+      } else {
+        status.textContent = 'Enable deadline reminders for this device.';
+        button.innerHTML = '<i data-lucide="bell"></i>Enable Notifications';
+      }
+    }
+
+    async function handleEnableNotifications() {
+      const status = $('#notificationStatus');
+      const button = $('#enableNotifications');
+      if (!status || !button) return;
+      button.disabled = true;
+      status.textContent = 'Requesting notification permission...';
+      try {
+        const subscription = await requestNotificationPermissionAndSubscribe();
+        status.textContent = subscription ? 'Notifications are enabled for this device.' : 'Notifications were not enabled.';
+      } catch (error) {
+        status.textContent = `Notifications failed: ${describeSupabaseError(error)}`;
+      } finally {
+        button.disabled = false;
+        updateNotificationSettingsUI();
+        refreshIcons();
+      }
     }
 
     function setAuthMessage(message, isError = false) {
@@ -2958,6 +3018,7 @@
       $('#openClassForm').addEventListener('click', () => openClassForm());
       $('#cancelClassForm').addEventListener('click', closeClassForm);
       $('#classScheduleForm').addEventListener('submit', saveClassSchedule);
+      $('#enableNotifications').addEventListener('click', handleEnableNotifications);
       $('#addTaskForm').addEventListener('submit', handleAddTaskSubmit);
       $('#submitAddTask').addEventListener('click', handleAddTaskSubmit);
     }
