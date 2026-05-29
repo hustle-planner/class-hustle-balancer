@@ -2213,12 +2213,12 @@
       return (date.getDay() + 6) % 7;
     }
 
-    function taskDateKey(task) {
-      return task.scheduled_date ? String(task.scheduled_date).slice(0, 10) : null;
+    function taskDeadlineKey(task) {
+      return task.deadline ? String(task.deadline).slice(0, 10) : null;
     }
 
     function taskScheduledDayForCurrentWeek(task) {
-      const dateKey = taskDateKey(task);
+      const dateKey = taskDeadlineKey(task);
       if (!dateKey) return null;
       const day = dayIndexFromDateKey(dateKey);
       return day !== null && dateKey === weekDateForDay(day) ? day : null;
@@ -2228,17 +2228,11 @@
       if (task.status !== 'scheduled') {
         if (task.status === 'unscheduled' || task.status === 'deferred') {
           task.scheduled_day = null;
-          task.scheduled_date = null;
           task.scheduled_time = null;
         }
         return task;
       }
-      if (task.scheduled_date) {
-        task.scheduled_date = taskDateKey(task);
-        task.scheduled_day = dayIndexFromDateKey(task.scheduled_date);
-      } else if (Number.isInteger(task.scheduled_day)) {
-        task.scheduled_date = weekDateForDay(task.scheduled_day);
-      }
+      task.scheduled_day = task.deadline ? dayIndexFromDateKey(task.deadline) : null;
       return task;
     }
 
@@ -2265,7 +2259,6 @@
         collaborator_label: row.collaborator_label || '',
         status: row.status || 'unscheduled',
         scheduled_day: Number.isInteger(row.scheduled_day) ? row.scheduled_day : null,
-        scheduled_date: row.scheduled_date || null,
         scheduled_time: row.scheduled_time ? String(row.scheduled_time).slice(0, 5) : null,
         user_id: row.user_id || currentUser?.id || null
       };
@@ -2481,7 +2474,6 @@
         collaborator_label: task.is_collaboration ? (task.collaborator_label || null) : null,
         status: task.status,
         scheduled_day: task.scheduled_day,
-        scheduled_date: task.scheduled_date,
         scheduled_time: task.scheduled_time
       };
       return trackedRequest(() => supabase.from(TABLES.tasks).upsert(payload));
@@ -2510,7 +2502,6 @@
           collaborator_label: task.is_collaboration ? (task.collaborator_label || null) : null,
           status: task.status,
           scheduled_day: task.scheduled_day,
-          scheduled_date: task.scheduled_date,
           scheduled_time: task.scheduled_time
         };
       });
@@ -2696,7 +2687,7 @@
     }
 
     function snapshotTask(task) {
-      return `${task.status}|${task.scheduled_date}|${task.scheduled_day}|${task.scheduled_time}`;
+      return `${task.status}|${task.deadline}|${task.scheduled_day}|${task.scheduled_time}`;
     }
 
     function runScheduling(options = { mode: 'full' }) {
@@ -2715,7 +2706,6 @@
         schedulable.forEach(task => {
           task.status = 'unscheduled';
           task.scheduled_day = null;
-          task.scheduled_date = null;
           task.scheduled_time = null;
         });
       } else {
@@ -2723,7 +2713,6 @@
         schedulable.forEach(task => {
           task.status = 'unscheduled';
           task.scheduled_day = null;
-          task.scheduled_date = null;
           task.scheduled_time = null;
         });
       }
@@ -2736,7 +2725,7 @@
         const block = freeBlocks.find(candidate => taskFitsBlock(task, candidate));
         if (block) {
           task.scheduled_day = block.day;
-          task.scheduled_date = weekDateForDay(block.day);
+          task.deadline = weekDateForDay(block.day);
           task.scheduled_time = toTime(block.cursor);
           task.status = 'scheduled';
           block.cursor += task.estimated_minutes;
@@ -2744,7 +2733,6 @@
         } else {
           task.status = 'unscheduled';
           task.scheduled_day = null;
-          task.scheduled_date = null;
           task.scheduled_time = null;
           unscheduledCount += 1;
         }
@@ -2824,7 +2812,7 @@
 
     function renderDayColumn(day, label, todaysIndex, hasTasks) {
       const columnDate = weekDateForDay(day);
-      const dayTasks = tasks.filter(task => task.status === 'scheduled' && taskDateKey(task) === columnDate && task.scheduled_time);
+      const dayTasks = tasks.filter(task => task.status === 'scheduled' && taskDeadlineKey(task) === columnDate && task.scheduled_time);
       const dayBlocks = fixedBlocks.filter(block => block.day_of_week === day);
       const cards = [
         ...dayBlocks.map(renderFixedBlock),
@@ -2924,7 +2912,7 @@
       const task = tasks.find(item => item.id === id);
       if (!task) return;
       task.scheduled_day = day;
-      task.scheduled_date = weekDateForDay(day);
+      task.deadline = weekDateForDay(day);
       task.scheduled_time = time;
       task.status = 'scheduled';
       persistTask(task);
@@ -2937,7 +2925,6 @@
       if (!task) return;
       task.status = 'unscheduled';
       task.scheduled_day = null;
-      task.scheduled_date = null;
       task.scheduled_time = null;
       persistTask(task);
       renderAll();
@@ -3405,7 +3392,6 @@
         collaborator_label: $('#addCollab').checked ? String(data.get('collaborator_label') || '').trim() : null,
         status: hasScheduledDateTime ? 'scheduled' : 'unscheduled',
         scheduled_day: hasScheduledDateTime ? (new Date(`${deadline}T00:00:00`).getDay() + 6) % 7 : null,
-        scheduled_date: hasScheduledDateTime ? deadline : null,
         scheduled_time: hasScheduledDateTime ? scheduledTime : null
       };
       if (!draft.name) {
@@ -3537,7 +3523,6 @@
       Object.assign(task, patch);
       if (task.status === 'unscheduled') {
         task.scheduled_day = null;
-        task.scheduled_date = null;
         task.scheduled_time = null;
       }
       syncTaskScheduleFields(task);
@@ -3647,7 +3632,6 @@
         const patch = { status: event.target.value };
         if (event.target.value === 'unscheduled' || event.target.value === 'deferred') {
           patch.scheduled_day = null;
-          patch.scheduled_date = null;
           patch.scheduled_time = null;
         }
         updateTask(selectedTaskId, patch, event.target.value === 'scheduled');
