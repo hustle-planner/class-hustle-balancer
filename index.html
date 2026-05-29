@@ -1201,19 +1201,29 @@
         z-index: 20;
         display: grid;
         grid-template-columns: repeat(4, 1fr);
+        height: calc(96px + env(safe-area-inset-bottom));
+        min-height: calc(96px + env(safe-area-inset-bottom));
+        padding-bottom: env(safe-area-inset-bottom);
         border-top: 1px solid var(--color-border);
         background: var(--color-surface);
+        box-sizing: border-box;
       }
 
       .bottom-tab {
         display: grid;
         place-items: center;
         gap: 0.1rem;
-        min-height: 64px;
+        min-height: 84px;
+        padding: 14px 4px 12px;
         color: var(--color-text-muted);
         background: transparent;
-        font-size: 0.7rem;
+        font-size: max(11px, 0.7rem);
         font-weight: 700;
+      }
+
+      .bottom-tab svg {
+        width: 28px;
+        height: 28px;
       }
 
       .bottom-tab.active {
@@ -1475,14 +1485,15 @@
       }
 
       .bottom-tabs {
-        min-height: calc(56px + env(safe-area-inset-bottom));
+        height: calc(96px + env(safe-area-inset-bottom));
+        min-height: calc(96px + env(safe-area-inset-bottom));
         padding-bottom: env(safe-area-inset-bottom);
       }
 
       .bottom-tab {
         position: relative;
-        min-height: 56px;
-        padding: 6px 4px;
+        min-height: 84px;
+        padding: 14px 4px 12px;
         border-top: 2px solid transparent;
         font-size: 11px;
       }
