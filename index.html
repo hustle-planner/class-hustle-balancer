@@ -591,6 +591,12 @@
       z-index: 3;
     }
 
+    .task-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
     .schedule-card:hover {
       box-shadow: var(--shadow-md);
       transform: translateY(-1px);
@@ -609,6 +615,7 @@
 
     .card-title {
       min-width: 0;
+      flex: 0 0 auto;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -623,12 +630,22 @@
       flex-wrap: wrap;
       gap: 0.3rem;
       min-width: 0;
+      overflow: hidden;
       color: var(--color-text-muted);
       font-size: var(--text-xs);
       font-variant-numeric: tabular-nums;
     }
 
+    .task-card .card-meta {
+      flex-wrap: nowrap;
+      white-space: nowrap;
+    }
+
     .bucket-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      flex: 0 0 auto;
       padding: 0.1rem 0.35rem;
       background: color-mix(in srgb, var(--bucket-color) 12%, var(--color-surface));
       color: var(--color-text);
@@ -3076,10 +3093,10 @@
       const scale = pxPerMin();
       const start = toMinutes(task.scheduled_time);
       const top = (start - START_MIN) * scale;
-      const height = Math.max(44, task.estimated_minutes * scale - 4);
+      const height = Math.max(58, task.estimated_minutes * scale - 4);
       const due = deadlineLabel(task.deadline);
       return `
-        <article class="schedule-card" draggable="true" data-task-id="${task.id}" style="--bucket-color:${meta.color};top:${top}px;height:${height}px;">
+        <article class="schedule-card task-card" draggable="true" data-task-id="${task.id}" style="--bucket-color:${meta.color};top:${top}px;height:${height}px;">
           <div class="card-title">${escapeHtml(task.name)}</div>
           <div class="card-meta">
             <span class="bucket-badge"><span class="dot"></span>${meta.label}</span>
