@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hustle-planner-v1';
+const CACHE_NAME = 'hustle-planner-v2';
 const SHELL_ASSETS = [
   '/class-hustle-balancer/',
   '/class-hustle-balancer/index.html',
@@ -25,6 +25,18 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
+  if (event.request.mode === 'navigate' || event.request.destination === 'document') {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+          return response;
+        })
+        .catch(() => caches.match(event.request).then(cached => cached || caches.match('/class-hustle-balancer/index.html')))
+    );
+    return;
+  }
   event.respondWith(
     caches.match(event.request).then(cached => cached || fetch(event.request))
   );
