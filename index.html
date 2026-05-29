@@ -530,7 +530,7 @@
 
     .timeline {
       position: relative;
-      height: 780px;
+      height: 1160px;
       overflow: auto;
       background:
         repeating-linear-gradient(
@@ -1606,7 +1606,7 @@
 
       .timeline {
         height: calc(100dvh - 304px);
-        min-height: 560px;
+        min-height: 720px;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
       }
@@ -2300,8 +2300,8 @@
     const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const DAY_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const CLASS_COLORS = ['#4f98a3', '#6daa45', '#7a39bb', '#da7101', '#a12c7b', '#01696f'];
-    const START_MIN = 7 * 60;
-    const END_MIN = 23 * 60 + 30;
+    const START_MIN = 0;
+    const END_MIN = (24 * 60) - 1;
     const PX_PER_MIN = 0.8;
 
     let tasks = [];
@@ -3189,15 +3189,15 @@
       });
     }
 
-    function renderTodayHeader(today, completedTasks) {
+    function renderTodayHeader(today, progressTasks) {
       const date = new Date(`${today}T00:00:00`);
       $('#todayDate').textContent = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
       const hour = new Date().getHours();
       const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
       $('#todayGreeting').textContent = `${greeting}, ${settings.userName || 'Student'}`;
       $('#todayProgressBars').innerHTML = BUCKETS.map(bucket => {
-        const completedMinutes = completedTasks
-          .filter(task => task.bucket === bucket.key && isTaskComplete(task))
+        const completedMinutes = progressTasks
+          .filter(task => task.bucket === bucket.key && (task.status === 'scheduled' || isTaskComplete(task)))
           .reduce((sum, task) => sum + task.estimated_minutes, 0);
         const hoursCompleted = completedMinutes / 60;
         const dailyTarget = (Number(settings.targets[bucket.key]) || 0) / 5;
@@ -3261,15 +3261,15 @@
       if (!currentUser) return;
       const today = new Date().toISOString().split('T')[0];
       const [progressResult, agendaResult, unscheduledResult] = await Promise.all([
-        trackedRequest(() => supabase.from(TABLES.tasks).select('*').eq('user_id', currentUser.id).eq('deadline', today).in('status', ['completed', 'done'])),
+        trackedRequest(() => supabase.from(TABLES.tasks).select('*').eq('user_id', currentUser.id).eq('deadline', today).in('status', ['scheduled', 'completed', 'done'])),
         trackedRequest(() => supabase.from(TABLES.tasks).select('*').eq('user_id', currentUser.id).eq('deadline', today).not('scheduled_time', 'is', null).order('scheduled_time', { ascending: true })),
         trackedRequest(() => supabase.from(TABLES.tasks).select('*').eq('user_id', currentUser.id).eq('deadline', today).is('scheduled_time', null).neq('status', 'completed').neq('status', 'done'))
       ]);
-      const completedTasks = Array.isArray(progressResult.data) ? progressResult.data.map(normalizeTask) : [];
+      const progressTasks = Array.isArray(progressResult.data) ? progressResult.data.map(normalizeTask) : [];
       const agendaTasks = Array.isArray(agendaResult.data) ? agendaResult.data.map(normalizeTask) : [];
       const unscheduledTasks = Array.isArray(unscheduledResult.data) ? unscheduledResult.data.map(normalizeTask) : [];
       mergeTodayTasks([...(progressResult.data || []), ...(agendaResult.data || []), ...(unscheduledResult.data || [])]);
-      renderTodayHeader(today, completedTasks);
+      renderTodayHeader(today, progressTasks);
       renderTodayAgenda(agendaTasks);
       renderTodayUnscheduled(unscheduledTasks);
       refreshIcons();
