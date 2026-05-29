@@ -2011,9 +2011,15 @@
             <input id="addMinutes" name="estimated_minutes" type="number" min="15" step="15" value="60" required>
           </div>
         </div>
-        <div class="field">
-          <label for="addDeadline">Deadline</label>
-          <input id="addDeadline" name="deadline" type="date">
+        <div class="form-grid">
+          <div class="field">
+            <label for="addDeadline">Deadline</label>
+            <input id="addDeadline" name="deadline" type="date">
+          </div>
+          <div class="field">
+            <label for="addScheduledTime">Scheduled time</label>
+            <input id="addScheduledTime" name="scheduled_time" type="time">
+          </div>
         </div>
         <div class="field">
           <div class="field-label">Energy type</div>
@@ -2184,6 +2190,58 @@
       return d;
     }
 
+    function formatDateKey(date) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    }
+
+    function weekStartDate() {
+      const start = isoToday();
+      start.setDate(start.getDate() - todayIndex());
+      return start;
+    }
+
+    function weekDateForDay(day) {
+      const date = weekStartDate();
+      date.setDate(date.getDate() + day);
+      return formatDateKey(date);
+    }
+
+    function dayIndexFromDateKey(dateKey) {
+      if (!dateKey) return null;
+      const date = new Date(`${dateKey}T00:00:00`);
+      if (Number.isNaN(date.getTime())) return null;
+      return (date.getDay() + 6) % 7;
+    }
+
+    function taskDateKey(task) {
+      return task.scheduled_date ? String(task.scheduled_date).slice(0, 10) : null;
+    }
+
+    function taskScheduledDayForCurrentWeek(task) {
+      const dateKey = taskDateKey(task);
+      if (!dateKey) return null;
+      const day = dayIndexFromDateKey(dateKey);
+      return day !== null && dateKey === weekDateForDay(day) ? day : null;
+    }
+
+    function syncTaskScheduleFields(task) {
+      if (task.status !== 'scheduled') {
+        if (task.status === 'unscheduled' || task.status === 'deferred') {
+          task.scheduled_day = null;
+          task.scheduled_date = null;
+          task.scheduled_time = null;
+        }
+        return task;
+      }
+      if (task.scheduled_date) {
+        task.scheduled_date = taskDateKey(task);
+        task.scheduled_day = dayIndexFromDateKey(task.scheduled_date);
+      } else if (Number.isInteger(task.scheduled_day)) {
+        task.scheduled_date = weekDateForDay(task.scheduled_day);
+      }
+      return task;
+    }
+
     function deadlineLabel(deadline) {
       if (!deadline) return '';
       const due = new Date(`${deadline}T00:00:00`);
@@ -2196,7 +2254,7 @@
     }
 
     function normalizeTask(row) {
-      return {
+      const task = {
         id: row.id,
         name: row.name || 'Untitled task',
         bucket: row.bucket || 'classes',
@@ -2207,9 +2265,11 @@
         collaborator_label: row.collaborator_label || '',
         status: row.status || 'unscheduled',
         scheduled_day: Number.isInteger(row.scheduled_day) ? row.scheduled_day : null,
+        scheduled_date: row.scheduled_date || null,
         scheduled_time: row.scheduled_time ? String(row.scheduled_time).slice(0, 5) : null,
         user_id: row.user_id || currentUser?.id || null
       };
+      return syncTaskScheduleFields(task);
     }
 
     function normalizeFixedBlock(row) {
@@ -2408,6 +2468,7 @@
       });
       if (!user) return Promise.resolve();
       task.user_id = user.id;
+      syncTaskScheduleFields(task);
       const payload = {
         id: task.id,
         user_id: user.id,
@@ -2420,6 +2481,7 @@
         collaborator_label: task.is_collaboration ? (task.collaborator_label || null) : null,
         status: task.status,
         scheduled_day: task.scheduled_day,
+        scheduled_date: task.scheduled_date,
         scheduled_time: task.scheduled_time
       };
       return trackedRequest(() => supabase.from(TABLES.tasks).upsert(payload));
@@ -2434,20 +2496,24 @@
       if (!user) return Promise.resolve();
       const syncableTasks = changedTasks.filter(task => !task._pendingInsert);
       if (!syncableTasks.length) return Promise.resolve();
-      const payload = syncableTasks.map(task => ({
-        id: task.id,
-        user_id: user.id,
-        name: task.name,
-        bucket: task.bucket,
-        estimated_minutes: task.estimated_minutes,
-        deadline: task.deadline || null,
-        energy_type: task.energy_type,
-        is_collaboration: task.is_collaboration,
-        collaborator_label: task.is_collaboration ? (task.collaborator_label || null) : null,
-        status: task.status,
-        scheduled_day: task.scheduled_day,
-        scheduled_time: task.scheduled_time
-      }));
+      const payload = syncableTasks.map(task => {
+        syncTaskScheduleFields(task);
+        return {
+          id: task.id,
+          user_id: user.id,
+          name: task.name,
+          bucket: task.bucket,
+          estimated_minutes: task.estimated_minutes,
+          deadline: task.deadline || null,
+          energy_type: task.energy_type,
+          is_collaboration: task.is_collaboration,
+          collaborator_label: task.is_collaboration ? (task.collaborator_label || null) : null,
+          status: task.status,
+          scheduled_day: task.scheduled_day,
+          scheduled_date: task.scheduled_date,
+          scheduled_time: task.scheduled_time
+        };
+      });
       return trackedRequest(() => supabase.from(TABLES.tasks).upsert(payload));
     }
 
@@ -2556,10 +2622,11 @@
         });
       });
       lockedTasks.forEach(task => {
-        if (task.scheduled_day === null || !task.scheduled_time || task.status !== 'scheduled') return;
+        const day = taskScheduledDayForCurrentWeek(task);
+        if (day === null || !task.scheduled_time || task.status !== 'scheduled') return;
         const start = toMinutes(task.scheduled_time);
         blockers.push({
-          day: task.scheduled_day,
+          day,
           start,
           end: start + task.estimated_minutes,
           label: task.name,
@@ -2629,7 +2696,7 @@
     }
 
     function snapshotTask(task) {
-      return `${task.status}|${task.scheduled_day}|${task.scheduled_time}`;
+      return `${task.status}|${task.scheduled_date}|${task.scheduled_day}|${task.scheduled_time}`;
     }
 
     function runScheduling(options = { mode: 'full' }) {
@@ -2640,14 +2707,15 @@
       let locked = [];
 
       if (mode === 'remaining') {
-        locked = tasks.filter(task => task.status === 'scheduled' && task.scheduled_day !== null && task.scheduled_time);
+        locked = tasks.filter(task => task.status === 'scheduled' && taskScheduledDayForCurrentWeek(task) !== null && task.scheduled_time);
         schedulable = tasks.filter(task => task.status === 'unscheduled');
       } else if (mode === 'single') {
-        locked = tasks.filter(task => task.id !== options.taskId && task.status === 'scheduled' && task.scheduled_day !== null && task.scheduled_time);
+        locked = tasks.filter(task => task.id !== options.taskId && task.status === 'scheduled' && taskScheduledDayForCurrentWeek(task) !== null && task.scheduled_time);
         schedulable = tasks.filter(task => task.id === options.taskId);
         schedulable.forEach(task => {
           task.status = 'unscheduled';
           task.scheduled_day = null;
+          task.scheduled_date = null;
           task.scheduled_time = null;
         });
       } else {
@@ -2655,6 +2723,7 @@
         schedulable.forEach(task => {
           task.status = 'unscheduled';
           task.scheduled_day = null;
+          task.scheduled_date = null;
           task.scheduled_time = null;
         });
       }
@@ -2667,6 +2736,7 @@
         const block = freeBlocks.find(candidate => taskFitsBlock(task, candidate));
         if (block) {
           task.scheduled_day = block.day;
+          task.scheduled_date = weekDateForDay(block.day);
           task.scheduled_time = toTime(block.cursor);
           task.status = 'scheduled';
           block.cursor += task.estimated_minutes;
@@ -2674,6 +2744,7 @@
         } else {
           task.status = 'unscheduled';
           task.scheduled_day = null;
+          task.scheduled_date = null;
           task.scheduled_time = null;
           unscheduledCount += 1;
         }
@@ -2752,7 +2823,8 @@
     }
 
     function renderDayColumn(day, label, todaysIndex, hasTasks) {
-      const dayTasks = tasks.filter(task => task.status === 'scheduled' && task.scheduled_day === day && task.scheduled_time);
+      const columnDate = weekDateForDay(day);
+      const dayTasks = tasks.filter(task => task.status === 'scheduled' && taskDateKey(task) === columnDate && task.scheduled_time);
       const dayBlocks = fixedBlocks.filter(block => block.day_of_week === day);
       const cards = [
         ...dayBlocks.map(renderFixedBlock),
@@ -2852,6 +2924,7 @@
       const task = tasks.find(item => item.id === id);
       if (!task) return;
       task.scheduled_day = day;
+      task.scheduled_date = weekDateForDay(day);
       task.scheduled_time = time;
       task.status = 'scheduled';
       persistTask(task);
@@ -2864,6 +2937,7 @@
       if (!task) return;
       task.status = 'unscheduled';
       task.scheduled_day = null;
+      task.scheduled_date = null;
       task.scheduled_time = null;
       persistTask(task);
       renderAll();
@@ -3317,18 +3391,22 @@
       }
 
       const data = new FormData(form);
+      const deadline = String(data.get('deadline') || '') || null;
+      const scheduledTime = String(data.get('scheduled_time') || '') || null;
+      const hasScheduledDateTime = Boolean(deadline && scheduledTime);
       const draft = {
         user_id: user.id,
         name: String(data.get('name') || '').trim(),
         bucket: String(data.get('bucket') || 'classes'),
         estimated_minutes: Math.max(15, Number(data.get('estimated_minutes')) || 60),
-        deadline: String(data.get('deadline') || '') || null,
+        deadline,
         energy_type: currentAddEnergy,
         is_collaboration: $('#addCollab').checked,
         collaborator_label: $('#addCollab').checked ? String(data.get('collaborator_label') || '').trim() : null,
-        status: 'unscheduled',
-        scheduled_day: null,
-        scheduled_time: null
+        status: hasScheduledDateTime ? 'scheduled' : 'unscheduled',
+        scheduled_day: hasScheduledDateTime ? (new Date(`${deadline}T00:00:00`).getDay() + 6) % 7 : null,
+        scheduled_date: hasScheduledDateTime ? deadline : null,
+        scheduled_time: hasScheduledDateTime ? scheduledTime : null
       };
       if (!draft.name) {
         $('#addTaskError').textContent = 'Task name is required.';
@@ -3349,9 +3427,7 @@
       const insertedTask = normalizeTask(insertResult.data || { ...draft, id: tempId });
       tasks.push(insertedTask);
       closeAddModal();
-      runScheduling({ mode: 'full' });
       renderAll();
-      persistTask(tasks.find(task => task.id === insertedTask.id) || insertedTask);
     }
 
     function setView(view) {
@@ -3461,8 +3537,10 @@
       Object.assign(task, patch);
       if (task.status === 'unscheduled') {
         task.scheduled_day = null;
+        task.scheduled_date = null;
         task.scheduled_time = null;
       }
+      syncTaskScheduleFields(task);
       if (rerun) runScheduling({ mode: 'full' });
       persistTask(task);
       renderAll();
@@ -3569,6 +3647,7 @@
         const patch = { status: event.target.value };
         if (event.target.value === 'unscheduled' || event.target.value === 'deferred') {
           patch.scheduled_day = null;
+          patch.scheduled_date = null;
           patch.scheduled_time = null;
         }
         updateTask(selectedTaskId, patch, event.target.value === 'scheduled');
