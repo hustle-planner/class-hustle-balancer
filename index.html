@@ -497,8 +497,8 @@
 
     .day-column {
       display: grid;
-      grid-template-rows: auto minmax(560px, 1fr) auto;
-      min-height: calc(100vh - 136px);
+      grid-template-rows: auto auto auto;
+      min-height: 0;
       overflow: hidden;
       border: 1px solid var(--color-border);
       border-radius: var(--radius-lg);
@@ -530,14 +530,15 @@
 
     .timeline {
       position: relative;
-      height: 662px;
+      height: calc(100vh - 238px);
+      min-height: 560px;
       overflow: hidden;
       background:
         repeating-linear-gradient(
           to bottom,
           transparent 0,
-          transparent 23px,
-          color-mix(in srgb, var(--color-border) 46%, transparent) 24px
+          transparent calc(var(--hour-height, 32px) - 1px),
+          color-mix(in srgb, var(--color-border) 46%, transparent) var(--hour-height, 32px)
         );
     }
 
@@ -1591,7 +1592,7 @@
         display: none;
         width: 100%;
         min-width: 0;
-        min-height: calc(100dvh - 148px);
+        min-height: 0;
         border-radius: var(--radius-lg);
       }
 
@@ -1606,8 +1607,7 @@
 
       .timeline {
         height: calc(100dvh - 304px);
-        min-height: 662px;
-        max-height: 662px;
+        min-height: 560px;
         overflow-y: hidden;
         -webkit-overflow-scrolling: touch;
       }
@@ -2303,7 +2303,7 @@
     const CLASS_COLORS = ['#4f98a3', '#6daa45', '#7a39bb', '#da7101', '#a12c7b', '#01696f'];
     const START_MIN = 0;
     const END_MIN = (24 * 60) - 1;
-    const PX_PER_MIN = 0.46;
+    const MIN_TIMELINE_HEIGHT = 560;
 
     let tasks = [];
     let baseFixedBlocks = [];
@@ -2369,6 +2369,15 @@
       const date = new Date();
       date.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
       return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+
+    function timelineHeight() {
+      const offset = window.matchMedia('(max-width: 768px)').matches ? 304 : 238;
+      return Math.max(MIN_TIMELINE_HEIGHT, window.innerHeight - offset);
+    }
+
+    function pxPerMin() {
+      return timelineHeight() / Math.max(1, END_MIN - START_MIN);
     }
 
     function formatHours(minutes) {
@@ -3009,6 +3018,8 @@
     }
 
     function renderDayColumn(day, label, todaysIndex, hasTasks) {
+      const height = timelineHeight();
+      const scale = pxPerMin();
       const columnDate = weekDateForDay(day);
       const dayTasks = tasks.filter(task => task.status === 'scheduled' && taskDeadlineKey(task) === columnDate && task.scheduled_time);
       const dayBlocks = fixedBlocks.filter(block => block.day_of_week === day);
@@ -3018,17 +3029,17 @@
       ].join('');
       const slots = [];
       for (let minutes = START_MIN; minutes <= END_MIN - 30; minutes += 30) {
-        const top = (minutes - START_MIN) * PX_PER_MIN;
-        slots.push(`<div class="slot" data-day="${day}" data-time="${toTime(minutes)}" style="top:${top}px"></div>`);
+        const top = (minutes - START_MIN) * scale;
+        slots.push(`<div class="slot" data-day="${day}" data-time="${toTime(minutes)}" style="top:${top}px;height:${Math.max(12, 30 * scale)}px"></div>`);
       }
       const hourLabels = [];
       for (let minutes = START_MIN; minutes <= END_MIN; minutes += 60) {
-        hourLabels.push(`<div class="time-label" style="top:${(minutes - START_MIN) * PX_PER_MIN}px">${displayTime(minutes)}</div>`);
+        hourLabels.push(`<div class="time-label" style="top:${(minutes - START_MIN) * scale}px">${displayTime(minutes)}</div>`);
       }
       return `
         <section class="day-column ${day === todaysIndex ? 'today' : ''} ${day === selectedMobileDay ? 'mobile-selected-day' : ''}" data-day-column="${day}">
           <div class="day-head"><span>${label}</span><span class="day-hours">${formatHours(dayTasks.reduce((sum, task) => sum + task.estimated_minutes, 0))}</span></div>
-          <div class="timeline" data-day="${day}">
+          <div class="timeline" data-day="${day}" style="--hour-height:${60 * scale}px;height:${height}px">
             ${slots.join('')}
             ${hourLabels.join('')}
             ${!hasTasks ? '<div class="empty-day">No tasks yet — add one below</div>' : ''}
@@ -3040,10 +3051,11 @@
     }
 
     function renderFixedBlock(block) {
+      const scale = pxPerMin();
       const start = toMinutes(block.start_time);
       const end = toMinutes(block.end_time);
-      const top = (start - START_MIN) * PX_PER_MIN;
-      const height = Math.max(34, (end - start) * PX_PER_MIN - 4);
+      const top = (start - START_MIN) * scale;
+      const height = Math.max(34, (end - start) * scale - 4);
       return `
         <article class="schedule-card fixed-card" style="top:${top}px;height:${height}px;${block.color ? `border-left-color:${block.color};` : ''}" aria-label="${escapeHtml(block.label)} fixed block">
           <div class="card-title"><i data-lucide="lock" style="width:0.85rem;height:0.85rem;"></i> ${escapeHtml(block.label)}</div>
@@ -3054,9 +3066,10 @@
 
     function renderTaskCard(task) {
       const meta = bucketMeta(task.bucket);
+      const scale = pxPerMin();
       const start = toMinutes(task.scheduled_time);
-      const top = (start - START_MIN) * PX_PER_MIN;
-      const height = Math.max(44, task.estimated_minutes * PX_PER_MIN - 4);
+      const top = (start - START_MIN) * scale;
+      const height = Math.max(44, task.estimated_minutes * scale - 4);
       const due = deadlineLabel(task.deadline);
       return `
         <article class="schedule-card" draggable="true" data-task-id="${task.id}" style="--bucket-color:${meta.color};top:${top}px;height:${height}px;">
