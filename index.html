@@ -530,8 +530,8 @@
 
     .timeline {
       position: relative;
-      height: 1160px;
-      overflow: auto;
+      height: 662px;
+      overflow: hidden;
       background:
         repeating-linear-gradient(
           to bottom,
@@ -1606,8 +1606,9 @@
 
       .timeline {
         height: calc(100dvh - 304px);
-        min-height: 720px;
-        overflow-y: auto;
+        min-height: 662px;
+        max-height: 662px;
+        overflow-y: hidden;
         -webkit-overflow-scrolling: touch;
       }
 
@@ -2302,7 +2303,7 @@
     const CLASS_COLORS = ['#4f98a3', '#6daa45', '#7a39bb', '#da7101', '#a12c7b', '#01696f'];
     const START_MIN = 0;
     const END_MIN = (24 * 60) - 1;
-    const PX_PER_MIN = 0.8;
+    const PX_PER_MIN = 0.46;
 
     let tasks = [];
     let baseFixedBlocks = [];
