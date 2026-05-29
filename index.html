@@ -1,0 +1,2993 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Class + Hustle Time Balancer</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#01696f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Hustle Planner">
+  <link rel="apple-touch-icon" href="icon-192x192.png">
+
+  <!-- Fonts -->
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
+
+  <!-- Supabase JS client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Lucide icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <!-- Chart.js (for the Review section only) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --color-bg:             #f7f6f2;
+      --color-surface:        #f9f8f5;
+      --color-surface-2:      #fbfbf9;
+      --color-surface-offset: #f3f0ec;
+      --color-border:         #d4d1ca;
+      --color-text:           #28251d;
+      --color-text-muted:     #7a7974;
+      --color-text-faint:     #bab9b4;
+      --color-primary:        #01696f;
+      --color-primary-hover:  #0c4e54;
+      --color-success:        #437a22;
+      --color-warning:        #da7101;
+      --color-error:          #a12c7b;
+      --font-body:            'Satoshi', sans-serif;
+      --radius-sm:            0.375rem;
+      --radius-md:            0.5rem;
+      --radius-lg:            0.75rem;
+      --radius-full:          9999px;
+      --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem;
+      --space-4: 1rem;    --space-6: 1.5rem; --space-8: 2rem;
+      --space-12: 3rem;   --space-16: 4rem;
+      --shadow-sm: 0 1px 2px oklch(0.2 0.01 80 / 0.06);
+      --shadow-md: 0 4px 12px oklch(0.2 0.01 80 / 0.08);
+      --transition: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+      --text-xs:   clamp(0.75rem,  0.7rem  + 0.25vw, 0.875rem);
+      --text-sm:   clamp(0.875rem, 0.8rem  + 0.35vw, 1rem);
+      --text-base: clamp(1rem,     0.95rem + 0.25vw, 1.125rem);
+      --text-lg:   clamp(1.125rem, 1rem    + 0.75vw, 1.5rem);
+      --text-xl:   clamp(1.5rem,   1.2rem  + 1.25vw, 2.25rem);
+    }
+
+    [data-theme="dark"] {
+      --color-bg:             #171614;
+      --color-surface:        #1c1b19;
+      --color-surface-2:      #201f1d;
+      --color-surface-offset: #1d1c1a;
+      --color-border:         #393836;
+      --color-text:           #cdccca;
+      --color-text-muted:     #797876;
+      --color-text-faint:     #5a5957;
+      --color-primary:        #4f98a3;
+      --color-primary-hover:  #227f8b;
+      --color-success:        #6daa45;
+      --color-warning:        #fdab43;
+      --color-error:          #d163a7;
+      --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.2);
+      --shadow-md: 0 4px 12px oklch(0 0 0 / 0.3);
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      height: 100%;
+      color-scheme: light;
+    }
+
+    html[data-theme="dark"] { color-scheme: dark; }
+
+    body {
+      min-height: 100%;
+      margin: 0;
+      background: var(--color-bg);
+      color: var(--color-text);
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      font-weight: 400;
+      letter-spacing: 0;
+    }
+
+    button, input, select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      padding: var(--space-4);
+      border-right: 1px solid var(--color-border);
+      background: var(--color-surface);
+      z-index: 10;
+    }
+
+    .sidebar-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      margin-bottom: var(--space-6);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      gap: var(--space-2);
+      font-size: var(--text-lg);
+      font-weight: 700;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      flex: 0 0 auto;
+    }
+
+    .icon-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: var(--radius-md);
+      color: var(--color-text);
+      background: transparent;
+      transition: background var(--transition), color var(--transition), transform var(--transition);
+    }
+
+    .icon-button:hover {
+      background: var(--color-surface-offset);
+      color: var(--color-primary);
+    }
+
+    .nav-list {
+      display: grid;
+      gap: var(--space-1);
+      margin-bottom: var(--space-6);
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: var(--space-3);
+      border-left: 3px solid transparent;
+      border-radius: var(--radius-sm);
+      color: var(--color-text-muted);
+      background: transparent;
+      text-align: left;
+      transition: background var(--transition), color var(--transition), border-color var(--transition);
+    }
+
+    .nav-link span:first-child {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .nav-link.active {
+      border-left-color: var(--color-primary);
+      background: color-mix(in srgb, var(--color-primary) 9%, var(--color-surface));
+      color: var(--color-text);
+      font-weight: 700;
+    }
+
+    .count-badge,
+    .status-badge,
+    .bucket-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      border-radius: var(--radius-full);
+      font-size: var(--text-xs);
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .count-badge {
+      min-width: 1.5rem;
+      justify-content: center;
+      padding: 0.125rem 0.4rem;
+      background: color-mix(in srgb, var(--color-warning) 18%, var(--color-surface));
+      color: var(--color-warning);
+    }
+
+    .capacity {
+      display: grid;
+      gap: var(--space-3);
+      padding-top: var(--space-2);
+      overflow: auto;
+    }
+
+    .eyebrow,
+    label,
+    .field-label {
+      color: var(--color-text-muted);
+      font-size: var(--text-xs);
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .capacity-row {
+      display: grid;
+      gap: var(--space-1);
+    }
+
+    .capacity-text {
+      display: flex;
+      justify-content: space-between;
+      gap: var(--space-2);
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .progress-track {
+      height: 0.55rem;
+      overflow: hidden;
+      border-radius: var(--radius-full);
+      background: var(--color-surface-offset);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border) 60%, transparent);
+    }
+
+    .progress-fill {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .add-task {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      gap: var(--space-2);
+      margin-top: auto;
+      padding: 0.85rem var(--space-4);
+      border-radius: var(--radius-md);
+      background: var(--color-primary);
+      color: #fff;
+      font-weight: 700;
+      box-shadow: var(--shadow-sm);
+      transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+      animation: pulseOnce 900ms ease-out 400ms 1;
+    }
+
+    .add-task:hover {
+      background: var(--color-primary-hover);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-1px);
+    }
+
+    @keyframes pulseOnce {
+      0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 42%, transparent); }
+      100% { box-shadow: 0 0 0 14px transparent; }
+    }
+
+    .main {
+      position: relative;
+      min-width: 0;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--color-bg);
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 8;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      min-height: 72px;
+      padding: var(--space-4) var(--space-6);
+      border-bottom: 1px solid var(--color-border);
+      background: color-mix(in srgb, var(--color-bg) 92%, transparent);
+      backdrop-filter: blur(14px);
+    }
+
+    .title-wrap {
+      display: grid;
+      gap: 0.15rem;
+      min-width: 0;
+    }
+
+    .page-title {
+      margin: 0;
+      font-size: var(--text-xl);
+      font-weight: 700;
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+    }
+
+    .sync-indicator {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: var(--radius-full);
+      color: var(--color-primary);
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+
+    .sync-indicator.active { opacity: 1; }
+
+    .sync-error {
+      display: none;
+      max-width: min(34rem, 48vw);
+      padding: 0.45rem 0.65rem;
+      border: 1px solid color-mix(in srgb, var(--color-error) 36%, var(--color-border));
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--color-error) 10%, var(--color-surface));
+      color: var(--color-error);
+      font-size: var(--text-xs);
+      font-weight: 700;
+    }
+
+    .sync-error.show {
+      display: block;
+    }
+
+    .user-chip {
+      display: none;
+      align-items: center;
+      gap: var(--space-2);
+      max-width: 18rem;
+      padding: 0.45rem 0.65rem;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-full);
+      background: var(--color-surface-2);
+      color: var(--color-text-muted);
+      font-size: var(--text-xs);
+      font-weight: 700;
+    }
+
+    .user-chip.show {
+      display: inline-flex;
+    }
+
+    .user-chip span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .auth-gate {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      display: none;
+      place-items: center;
+      padding: var(--space-4);
+      background: var(--color-bg);
+    }
+
+    .auth-gate.open {
+      display: grid;
+    }
+
+    .auth-card {
+      display: grid;
+      gap: var(--space-4);
+      width: min(440px, 100%);
+      padding: var(--space-6);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      background: var(--color-surface);
+      box-shadow: var(--shadow-md);
+    }
+
+    .auth-card h2 {
+      margin: 0;
+      font-size: var(--text-xl);
+      line-height: 1.05;
+    }
+
+    .auth-card p {
+      margin: 0;
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+    }
+
+    .auth-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-2);
+    }
+
+    .auth-message {
+      min-height: 1.25rem;
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+      font-weight: 700;
+    }
+
+    .auth-message.error {
+      color: var(--color-error);
+    }
+
+    .spinner {
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid color-mix(in srgb, var(--color-primary) 18%, transparent);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 700ms linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .view {
+      display: none;
+      height: calc(100vh - 72px);
+      padding: var(--space-4) var(--space-6) var(--space-6);
+      overflow: auto;
+      opacity: 0;
+      animation: fadeIn 150ms ease forwards;
+    }
+
+    .view.active { display: block; }
+
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+
+    .warning-banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      margin-bottom: var(--space-4);
+      padding: var(--space-3) var(--space-4);
+      border: 1px solid color-mix(in srgb, var(--color-warning) 38%, var(--color-border));
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--color-warning) 11%, var(--color-surface));
+      color: var(--color-text);
+      font-size: var(--text-sm);
+    }
+
+    .warning-banner.show { display: flex; }
+
+    .week-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(190px, 1fr));
+      gap: var(--space-3);
+      min-width: 1320px;
+    }
+
+    .day-column {
+      display: grid;
+      grid-template-rows: auto minmax(560px, 1fr) auto;
+      min-height: calc(100vh - 136px);
+      overflow: hidden;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      background: var(--color-surface);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .day-column.today {
+      background: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface));
+      border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+    }
+
+    .day-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-3);
+      border-bottom: 1px solid var(--color-border);
+      font-weight: 700;
+    }
+
+    .day-hours {
+      color: var(--color-text-muted);
+      font-size: var(--text-xs);
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .timeline {
+      position: relative;
+      height: 780px;
+      overflow: auto;
+      background:
+        repeating-linear-gradient(
+          to bottom,
+          transparent 0,
+          transparent 23px,
+          color-mix(in srgb, var(--color-border) 46%, transparent) 24px
+        );
+    }
+
+    .slot {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 24px;
+      border-radius: var(--radius-sm);
+    }
+
+    .slot.drag-over,
+    .unscheduled-zone.drag-over {
+      outline: 2px dashed var(--color-primary);
+      outline-offset: -3px;
+      background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+    }
+
+    .time-label {
+      position: absolute;
+      left: 0.45rem;
+      color: var(--color-text-faint);
+      font-size: 0.65rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      pointer-events: none;
+      transform: translateY(-50%);
+    }
+
+    .schedule-card {
+      position: absolute;
+      left: 2.8rem;
+      right: 0.45rem;
+      display: grid;
+      gap: 0.25rem;
+      min-height: 38px;
+      padding: 0.42rem 0.5rem;
+      border: 1px solid color-mix(in srgb, var(--bucket-color) 24%, var(--color-border));
+      border-left: 4px solid var(--bucket-color);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--bucket-color) 6%, var(--color-surface));
+      box-shadow: var(--shadow-sm);
+      color: var(--color-text);
+      cursor: grab;
+      overflow: hidden;
+      transition: box-shadow var(--transition), transform var(--transition), border-color var(--transition);
+      z-index: 3;
+    }
+
+    .schedule-card:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-1px);
+    }
+
+    .schedule-card:active { cursor: grabbing; }
+
+    .fixed-card {
+      border-color: var(--color-border);
+      border-left-color: var(--color-text-faint);
+      background: color-mix(in srgb, var(--color-text-faint) 12%, var(--color-surface));
+      color: var(--color-text-muted);
+      cursor: default;
+      z-index: 2;
+    }
+
+    .card-title {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 700;
+      line-height: 1.2;
+      font-size: var(--text-sm);
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+      min-width: 0;
+      color: var(--color-text-muted);
+      font-size: var(--text-xs);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .bucket-badge {
+      padding: 0.1rem 0.35rem;
+      background: color-mix(in srgb, var(--bucket-color) 12%, var(--color-surface));
+      color: var(--color-text);
+    }
+
+    .dot {
+      width: 0.45rem;
+      height: 0.45rem;
+      border-radius: 50%;
+      background: var(--bucket-color);
+    }
+
+    .deadline-badge {
+      padding: 0.1rem 0.35rem;
+      border-radius: var(--radius-full);
+      background: color-mix(in srgb, var(--color-error) 14%, var(--color-surface));
+      color: var(--color-error);
+      font-size: var(--text-xs);
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .unscheduled-zone {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 56px;
+      margin: var(--space-3);
+      border: 1px dashed var(--color-border);
+      border-radius: var(--radius-md);
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+      transition: background var(--transition), outline var(--transition);
+    }
+
+    .empty-day {
+      position: absolute;
+      inset: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-4);
+      color: var(--color-text-faint);
+      font-size: var(--text-sm);
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .inbox-wrap,
+    .settings-wrap,
+    .review-wrap {
+      display: grid;
+      gap: var(--space-4);
+      max-width: 980px;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: var(--text-lg);
+      font-weight: 700;
+    }
+
+    .bucket-group {
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      background: var(--color-surface);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .bucket-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-3) var(--space-4);
+      border-left: 5px solid var(--bucket-color);
+      background: color-mix(in srgb, var(--bucket-color) 9%, var(--color-surface));
+      font-weight: 700;
+      text-transform: capitalize;
+    }
+
+    .task-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 120px 96px 120px 40px;
+      align-items: center;
+      gap: var(--space-3);
+      min-height: 58px;
+      padding: var(--space-3) var(--space-4);
+      border-top: 1px solid var(--color-border);
+      background: var(--color-surface-2);
+      color: var(--color-text);
+      text-align: left;
+      transition: background var(--transition);
+    }
+
+    .task-row:hover {
+      background: color-mix(in srgb, var(--bucket-color) 5%, var(--color-surface-2));
+    }
+
+    .task-row.unscheduled {
+      border-left: 4px solid var(--color-warning);
+    }
+
+    .task-row-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 700;
+    }
+
+    .muted {
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .status-badge {
+      justify-content: center;
+      padding: 0.22rem 0.45rem;
+      background: var(--color-surface-offset);
+      color: var(--color-text-muted);
+    }
+
+    .status-badge.done {
+      background: color-mix(in srgb, var(--color-success) 13%, var(--color-surface));
+      color: var(--color-success);
+    }
+
+    .status-badge.unscheduled {
+      background: color-mix(in srgb, var(--color-warning) 13%, var(--color-surface));
+      color: var(--color-warning);
+    }
+
+    .empty-state {
+      display: grid;
+      place-items: center;
+      gap: var(--space-3);
+      min-height: 280px;
+      padding: var(--space-8);
+      border: 1px dashed var(--color-border);
+      border-radius: var(--radius-lg);
+      color: var(--color-text-muted);
+      text-align: center;
+    }
+
+    .review-card,
+    .settings-card {
+      padding: var(--space-4);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      background: var(--color-surface);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .chart-shell {
+      height: 320px;
+    }
+
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: var(--text-sm);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .summary-table th,
+    .summary-table td {
+      padding: var(--space-3);
+      border-bottom: 1px solid var(--color-border);
+      text-align: left;
+    }
+
+    .summary-table th {
+      color: var(--color-text-muted);
+      font-size: var(--text-xs);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-4);
+    }
+
+    .field {
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .settings-section {
+      display: grid;
+      gap: var(--space-4);
+      padding-top: var(--space-4);
+      margin-top: var(--space-4);
+      border-top: 1px solid var(--color-border);
+    }
+
+    .settings-section:first-of-type {
+      padding-top: 0;
+      margin-top: 0;
+      border-top: 0;
+    }
+
+    .settings-section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+    }
+
+    .class-list {
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .class-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-3);
+      border: 1px solid var(--color-border);
+      border-left: 4px solid var(--class-color, #4f98a3);
+      border-radius: var(--radius-md);
+      background: var(--color-surface-2);
+    }
+
+    .class-row-main {
+      display: grid;
+      gap: 0.2rem;
+      min-width: 0;
+    }
+
+    .class-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 700;
+    }
+
+    .class-meta {
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .class-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+    }
+
+    .class-form {
+      display: none;
+      gap: var(--space-4);
+      padding: var(--space-4);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      background: var(--color-surface-offset);
+    }
+
+    .class-form.open {
+      display: grid;
+    }
+
+    .day-toggle-row,
+    .swatch-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+    }
+
+    .day-toggle {
+      min-width: 3rem;
+      min-height: 2.35rem;
+      padding: 0.45rem 0.7rem;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-full);
+      background: var(--color-surface-2);
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+      font-weight: 700;
+      transition: background var(--transition), color var(--transition), border-color var(--transition);
+    }
+
+    .day-toggle.active {
+      border-color: var(--color-primary);
+      background: color-mix(in srgb, var(--color-primary) 13%, var(--color-surface));
+      color: var(--color-primary);
+    }
+
+    .color-swatch {
+      width: 2rem;
+      height: 2rem;
+      border: 2px solid transparent;
+      border-radius: var(--radius-full);
+      background: var(--swatch-color);
+      box-shadow: inset 0 0 0 1px oklch(0 0 0 / 0.12);
+    }
+
+    .color-swatch.active {
+      border-color: var(--color-text);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--swatch-color) 22%, transparent);
+    }
+
+    .field-error {
+      min-height: 1rem;
+      color: var(--color-error);
+      font-size: var(--text-xs);
+      font-weight: 700;
+    }
+
+    input,
+    select {
+      width: 100%;
+      min-height: 2.6rem;
+      padding: 0.65rem 0.75rem;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-surface-2);
+      color: var(--color-text);
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 16%, transparent);
+    }
+
+    .primary-btn,
+    .secondary-btn,
+    .danger-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      min-height: 2.6rem;
+      padding: 0.65rem 0.9rem;
+      border-radius: var(--radius-md);
+      font-weight: 700;
+      transition: background var(--transition), color var(--transition), transform var(--transition), border-color var(--transition);
+    }
+
+    .primary-btn {
+      background: var(--color-primary);
+      color: #fff;
+    }
+
+    .primary-btn:hover { background: var(--color-primary-hover); }
+
+    .secondary-btn {
+      border: 1px solid var(--color-border);
+      background: var(--color-surface-2);
+      color: var(--color-text);
+    }
+
+    .secondary-btn:hover { background: var(--color-surface-offset); }
+
+    .danger-btn {
+      background: color-mix(in srgb, var(--color-error) 14%, var(--color-surface));
+      color: var(--color-error);
+    }
+
+    .danger-btn:hover {
+      background: var(--color-error);
+      color: #fff;
+    }
+
+    .toggle-row {
+      display: flex;
+      gap: var(--space-2);
+      flex-wrap: wrap;
+    }
+
+    .toggle-pill {
+      min-height: 2.35rem;
+      padding: 0.5rem 0.8rem;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-full);
+      background: var(--color-surface-2);
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+      font-weight: 700;
+      transition: background var(--transition), color var(--transition), border-color var(--transition);
+    }
+
+    .toggle-pill.active {
+      border-color: var(--color-primary);
+      background: color-mix(in srgb, var(--color-primary) 13%, var(--color-surface));
+      color: var(--color-primary);
+    }
+
+    .detail-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      z-index: 30;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      width: 300px;
+      height: 100vh;
+      border-left: 1px solid var(--color-border);
+      background: var(--color-surface);
+      box-shadow: -12px 0 28px oklch(0.2 0.01 80 / 0.12);
+      transform: translateX(100%);
+      transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .detail-panel.open {
+      transform: translateX(0);
+    }
+
+    .detail-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      padding: var(--space-4);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .detail-title-input {
+      width: calc(100% - 2.5rem);
+      min-height: 2.7rem;
+      padding: 0.25rem 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: var(--color-text);
+      font-size: var(--text-lg);
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .detail-body {
+      display: grid;
+      align-content: start;
+      gap: var(--space-4);
+      padding: var(--space-4);
+      overflow: auto;
+    }
+
+    .detail-actions {
+      display: grid;
+      gap: var(--space-2);
+      padding: var(--space-4);
+      border-top: 1px solid var(--color-border);
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: none;
+      place-items: center;
+      padding: var(--space-4);
+      background: oklch(0 0 0 / 0.42);
+    }
+
+    .modal-backdrop.open { display: grid; }
+
+    .modal {
+      width: min(560px, 100%);
+      max-height: min(780px, 92vh);
+      overflow: auto;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      background: var(--color-surface);
+      box-shadow: var(--shadow-md);
+    }
+
+    .modal-head,
+    .modal-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      padding: var(--space-4);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .modal-actions {
+      justify-content: flex-end;
+      border-top: 1px solid var(--color-border);
+      border-bottom: 0;
+    }
+
+    .modal-body {
+      display: grid;
+      gap: var(--space-4);
+      padding: var(--space-4);
+    }
+
+    .skeleton {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(190px, 1fr));
+      gap: var(--space-3);
+      min-width: 1320px;
+    }
+
+    .skeleton-col {
+      height: calc(100vh - 136px);
+      border-radius: var(--radius-lg);
+      background:
+        linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-text-faint) 14%, transparent), transparent),
+        var(--color-surface);
+      background-size: 220px 100%, 100% 100%;
+      animation: shimmer 1.2s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -220px 0, 0 0; }
+      100% { background-position: calc(100% + 220px) 0, 0 0; }
+    }
+
+    .auth-open .skeleton-col,
+    .auth-open .add-task {
+      animation: none;
+    }
+
+    .bottom-tabs {
+      display: none;
+    }
+
+    @media (max-width: 1023px) {
+      .app-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        display: none;
+      }
+
+      .main {
+        height: 100vh;
+        padding-bottom: 68px;
+      }
+
+      .view {
+        height: calc(100vh - 140px);
+        padding: var(--space-4);
+      }
+
+      .bottom-tabs {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 20;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        border-top: 1px solid var(--color-border);
+        background: var(--color-surface);
+      }
+
+      .bottom-tab {
+        display: grid;
+        place-items: center;
+        gap: 0.1rem;
+        min-height: 64px;
+        color: var(--color-text-muted);
+        background: transparent;
+        font-size: 0.7rem;
+        font-weight: 700;
+      }
+
+      .bottom-tab.active {
+        color: var(--color-primary);
+        background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+      }
+
+      .mobile-add {
+        display: inline-flex;
+      }
+
+      .topbar {
+        padding: var(--space-3) var(--space-4);
+      }
+    }
+
+    @media (max-width: 767px) {
+      .page-title {
+        font-size: 1.35rem;
+      }
+
+      .subtitle {
+        display: none;
+      }
+
+      .sync-error {
+        max-width: 44vw;
+      }
+
+      .week-grid,
+      .skeleton {
+        display: grid;
+        grid-template-columns: 1fr;
+        min-width: 0;
+      }
+
+      .day-column {
+        min-height: 720px;
+      }
+
+      .task-row {
+        grid-template-columns: minmax(0, 1fr) 76px 40px;
+      }
+
+      .task-row .hide-sm {
+        display: none;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .detail-panel {
+        width: min(100vw, 360px);
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .mobile-add {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Primary">
+      <div class="sidebar-head">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true">
+            <rect x="5" y="5" width="38" height="38" rx="10" fill="#01696f"></rect>
+            <path d="M15 29.5h18M15 18.5h9M15 24h16" stroke="#f9f8f5" stroke-width="3" stroke-linecap="round"></path>
+            <circle cx="33" cy="18.5" r="3.5" fill="#6daa45"></circle>
+          </svg>
+          <span>Hustle Planner</span>
+        </div>
+        <button class="icon-button" id="themeToggle" aria-label="Toggle theme" title="Toggle theme">
+          <i data-lucide="sun"></i>
+        </button>
+      </div>
+
+      <nav class="nav-list" aria-label="Views">
+        <button class="nav-link active" data-view-target="weekly">
+          <span><i data-lucide="calendar-days"></i>Weekly Plan</span>
+        </button>
+        <button class="nav-link" data-view-target="inbox">
+          <span><i data-lucide="inbox"></i>Task Inbox</span>
+          <span class="count-badge" id="inboxCount">0</span>
+        </button>
+        <button class="nav-link" data-view-target="review">
+          <span><i data-lucide="bar-chart-3"></i>Review</span>
+        </button>
+        <button class="nav-link" data-view-target="settings">
+          <span><i data-lucide="settings"></i>Settings</span>
+        </button>
+      </nav>
+
+      <section class="capacity" aria-label="Weekly capacity">
+        <div class="eyebrow">This Week</div>
+        <div id="capacityBars"></div>
+      </section>
+
+      <button class="add-task" id="openAddTask">
+        <i data-lucide="plus"></i>
+        Add Task
+      </button>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="title-wrap">
+          <h1 class="page-title" id="viewTitle">Class + Hustle Time Balancer</h1>
+          <div class="subtitle" id="viewSubtitle">A weekly command center for classes, recruiting, building, admin, and training.</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+          <div class="sync-error" id="syncError" role="status"></div>
+          <div class="user-chip" id="userChip"><i data-lucide="user"></i><span id="userEmail"></span></div>
+          <button class="secondary-btn" type="button" id="logoutButton" style="display:none;"><i data-lucide="log-out"></i>Log out</button>
+          <button class="secondary-btn mobile-add" id="mobileAddTask" aria-label="Add task"><i data-lucide="plus"></i></button>
+          <div class="sync-indicator" id="syncIndicator" aria-label="Syncing">
+            <div class="spinner"></div>
+          </div>
+        </div>
+      </header>
+
+      <section class="view active" id="weeklyView" aria-labelledby="viewTitle">
+        <div class="warning-banner" id="warningBanner">
+          <span id="warningText"></span>
+          <button class="icon-button" id="dismissWarning" aria-label="Dismiss warning"><i data-lucide="x"></i></button>
+        </div>
+        <div id="weekMount">
+          <div class="skeleton" aria-label="Loading schedule">
+            <div class="skeleton-col"></div><div class="skeleton-col"></div><div class="skeleton-col"></div><div class="skeleton-col"></div><div class="skeleton-col"></div><div class="skeleton-col"></div><div class="skeleton-col"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="inboxView" aria-labelledby="viewTitle">
+        <div class="inbox-wrap" id="inboxMount"></div>
+      </section>
+
+      <section class="view" id="reviewView" aria-labelledby="viewTitle">
+        <div class="review-wrap">
+          <section class="review-card">
+            <h2 class="section-title">Weekly Review</h2>
+            <div class="chart-shell">
+              <canvas id="reviewChart"></canvas>
+            </div>
+          </section>
+          <section class="review-card">
+            <table class="summary-table" id="summaryTable"></table>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="settingsView" aria-labelledby="viewTitle">
+        <div class="settings-wrap">
+          <section class="settings-card">
+            <form id="settingsForm">
+              <div class="settings-section">
+                <h2 class="section-title">Profile</h2>
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="userName">User name</label>
+                    <input id="userName" name="userName" type="text" autocomplete="name" placeholder="Student">
+                  </div>
+                  <div class="field">
+                    <label for="sleepTarget">Sleep target</label>
+                    <input id="sleepTarget" name="sleepTarget" type="number" min="0" step="0.5">
+                  </div>
+                </div>
+              </div>
+              <div class="settings-section">
+                <h2 class="section-title">Weekly Targets</h2>
+                <div class="form-grid">
+                  <div class="field"><label for="targetClasses">Classes target</label><input id="targetClasses" name="classes" type="number" min="0" step="0.5"></div>
+                  <div class="field"><label for="targetRecruiting">Recruiting target</label><input id="targetRecruiting" name="recruiting" type="number" min="0" step="0.5"></div>
+                  <div class="field"><label for="targetBuild">Build target</label><input id="targetBuild" name="build" type="number" min="0" step="0.5"></div>
+                  <div class="field"><label for="targetAdmin">Admin target</label><input id="targetAdmin" name="admin" type="number" min="0" step="0.5"></div>
+                  <div class="field"><label for="targetBody">Body target</label><input id="targetBody" name="body" type="number" min="0" step="0.5"></div>
+                  <div class="field" style="align-self:end;">
+                    <button class="primary-btn" type="submit"><i data-lucide="save"></i>Save</button>
+                  </div>
+                </div>
+              </div>
+            </form>
+            <div class="settings-section">
+              <div class="settings-section-head">
+                <h2 class="section-title">Weekly Class Schedule</h2>
+                <button class="secondary-btn" type="button" id="openClassForm"><i data-lucide="plus"></i>Add Class</button>
+              </div>
+              <div class="class-list" id="classScheduleList"></div>
+              <form class="class-form" id="classScheduleForm" novalidate>
+                <input type="hidden" id="classScheduleId">
+                <div class="field">
+                  <label for="className">Class name</label>
+                  <input id="className" type="text" placeholder="CSC 246" required>
+                  <div class="field-error" id="classNameError"></div>
+                </div>
+                <div class="field">
+                  <div class="field-label">Days of week</div>
+                  <div class="day-toggle-row" id="classDayToggles"></div>
+                  <div class="field-error" id="classDaysError"></div>
+                </div>
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="classStartTime">Start time</label>
+                    <input id="classStartTime" type="time" required>
+                    <div class="field-error" id="classStartError"></div>
+                  </div>
+                  <div class="field">
+                    <label for="classEndTime">End time</label>
+                    <input id="classEndTime" type="time" required>
+                    <div class="field-error" id="classEndError"></div>
+                  </div>
+                </div>
+                <div class="field">
+                  <div class="field-label">Color</div>
+                  <div class="swatch-row" id="classColorSwatches"></div>
+                </div>
+                <div class="toggle-row">
+                  <button class="primary-btn" type="submit"><i data-lucide="save"></i>Save Class</button>
+                  <button class="secondary-btn" type="button" id="cancelClassForm">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <nav class="bottom-tabs" aria-label="Mobile views">
+    <button class="bottom-tab active" data-view-target="weekly"><i data-lucide="calendar-days"></i><span>Plan</span></button>
+    <button class="bottom-tab" data-view-target="inbox"><i data-lucide="inbox"></i><span>Inbox</span></button>
+    <button class="bottom-tab" data-view-target="review"><i data-lucide="bar-chart-3"></i><span>Review</span></button>
+    <button class="bottom-tab" data-view-target="settings"><i data-lucide="settings"></i><span>Settings</span></button>
+  </nav>
+
+  <aside class="detail-panel" id="detailPanel" aria-label="Task detail">
+    <div class="detail-head">
+      <input class="detail-title-input" id="detailName" aria-label="Task name">
+      <button class="icon-button" id="closeDetail" aria-label="Close detail"><i data-lucide="x"></i></button>
+    </div>
+    <div class="detail-body">
+      <div class="field">
+        <label for="detailBucket">Bucket</label>
+        <select id="detailBucket"></select>
+      </div>
+      <div class="field">
+        <label for="detailMinutes">Estimated time</label>
+        <input id="detailMinutes" type="number" min="15" step="15">
+      </div>
+      <div class="field">
+        <label for="detailDeadline">Deadline</label>
+        <input id="detailDeadline" type="date">
+      </div>
+      <div class="field">
+        <div class="field-label">Energy type</div>
+        <div class="toggle-row" id="detailEnergy"></div>
+      </div>
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:0.5rem;text-transform:none;letter-spacing:0;font-size:var(--text-sm);font-weight:700;color:var(--color-text);">
+          <input id="detailCollab" type="checkbox" style="width:auto;min-height:auto;">
+          Collaboration
+        </label>
+      </div>
+      <div class="field" id="detailCollabField">
+        <label for="detailCollabLabel">Collaborator label</label>
+        <input id="detailCollabLabel" type="text" placeholder="Team, coach, founder...">
+      </div>
+      <div class="field">
+        <label for="detailStatus">Status</label>
+        <select id="detailStatus">
+          <option value="unscheduled">Unscheduled</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="done">Done</option>
+          <option value="deferred">Deferred</option>
+        </select>
+      </div>
+    </div>
+    <div class="detail-actions">
+      <button class="primary-btn" id="findBestSlot"><i data-lucide="sparkles"></i>Find Best Slot</button>
+      <button class="danger-btn" id="deleteTask"><i data-lucide="trash-2"></i>Delete Task</button>
+    </div>
+  </aside>
+
+  <div class="modal-backdrop" id="addModal" role="dialog" aria-modal="true" aria-labelledby="addModalTitle">
+    <form class="modal" id="addTaskForm">
+      <div class="modal-head">
+        <h2 class="section-title" id="addModalTitle">Add Task</h2>
+        <button class="icon-button" type="button" id="closeAddModal" aria-label="Close add task"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="addName">Task name</label>
+          <input id="addName" name="name" type="text" required placeholder="Prep systems design interview">
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label for="addBucket">Bucket</label>
+            <select id="addBucket" name="bucket"></select>
+          </div>
+          <div class="field">
+            <label for="addMinutes">Estimated time</label>
+            <input id="addMinutes" name="estimated_minutes" type="number" min="15" step="15" value="60" required>
+          </div>
+        </div>
+        <div class="field">
+          <label for="addDeadline">Deadline</label>
+          <input id="addDeadline" name="deadline" type="date">
+        </div>
+        <div class="field">
+          <div class="field-label">Energy type</div>
+          <div class="toggle-row" id="addEnergy"></div>
+        </div>
+        <div class="field">
+          <label style="display:flex;align-items:center;gap:0.5rem;text-transform:none;letter-spacing:0;font-size:var(--text-sm);font-weight:700;color:var(--color-text);">
+            <input id="addCollab" name="is_collaboration" type="checkbox" style="width:auto;min-height:auto;">
+            Collaboration
+          </label>
+        </div>
+        <div class="field" id="addCollabField" style="display:none;">
+          <label for="addCollabLabel">Collaborator label</label>
+          <input id="addCollabLabel" name="collaborator_label" type="text" placeholder="Recruiter, teammate, client...">
+        </div>
+        <div class="field-error" id="addTaskError"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-btn" type="button" id="cancelAddTask">Cancel</button>
+        <button class="primary-btn" type="button" id="submitAddTask"><i data-lucide="plus"></i>Add Task</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="auth-gate open" id="authGate">
+    <form class="auth-card" id="authForm">
+      <div>
+        <h2>Sign in to Hustle Planner</h2>
+        <p>Your schedule is protected by Supabase RLS and linked to your account.</p>
+      </div>
+      <div class="field">
+        <label for="authEmail">Email</label>
+        <input id="authEmail" type="email" autocomplete="email" required>
+      </div>
+      <div class="field">
+        <label for="authPassword">Password</label>
+        <input id="authPassword" type="password" autocomplete="current-password" required minlength="6">
+      </div>
+      <div class="auth-message" id="authMessage"></div>
+      <div class="auth-actions">
+        <button class="primary-btn" type="submit"><i data-lucide="log-in"></i>Sign In</button>
+        <button class="secondary-btn" type="button" id="signUpButton"><i data-lucide="user-plus"></i>Create Account</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    (() => {
+    // Supabase setup note: create a class_schedule table with columns id, name, days, start_time, end_time, and color before running class schedule sync.
+    const SUPABASE_URL = 'https://xhkrcesyzsqblyosjjol.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_rGyGlKSoK29BCc8-nSbx0Q_FfP63Mj6';
+    const VAPID_PUBLIC_KEY = 'YOUR_VAPID_PUBLIC_KEY';
+    const memoryAuthStorage = (() => {
+      const store = {};
+      return {
+        getItem: key => store[key] || null,
+        setItem: (key, value) => { store[key] = value; },
+        removeItem: key => { delete store[key]; }
+      };
+    })();
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: {
+        persistSession: true,
+        storage: memoryAuthStorage,
+        autoRefreshToken: true,
+        detectSessionInUrl: false
+      }
+    });
+    const TABLES = {
+      tasks: 'Tasks',
+      fixedBlocks: 'Fixed Blocks',
+      classSchedule: 'Class Schedule'
+    };
+
+    console.log('Step 1: Supabase connected');
+
+    const BUCKETS = [
+      { key: 'classes', label: 'Classes', color: '#4f98a3' },
+      { key: 'recruiting', label: 'Recruiting', color: '#6daa45' },
+      { key: 'build', label: 'Build', color: '#7a39bb' },
+      { key: 'admin', label: 'Admin', color: '#da7101' },
+      { key: 'body', label: 'Body', color: '#a12c7b' }
+    ];
+    const ENERGY_TYPES = ['deep', 'light', 'physical'];
+    const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const DAY_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const CLASS_COLORS = ['#4f98a3', '#6daa45', '#7a39bb', '#da7101', '#a12c7b', '#01696f'];
+    const START_MIN = 7 * 60;
+    const END_MIN = 23 * 60 + 30;
+    const PX_PER_MIN = 0.8;
+
+    let tasks = [];
+    let baseFixedBlocks = [];
+    let fixedBlocks = [];
+    let classSchedule = [];
+    let currentUser = null;
+    let currentSession = null;
+    let activeView = 'weekly';
+    let selectedTaskId = null;
+    let draggedTaskId = null;
+    let pendingRequests = 0;
+    let syncErrorTimer = null;
+    let warningDismissed = false;
+    let overloadBuckets = [];
+    let reviewChart = null;
+    let currentAddEnergy = 'deep';
+    let currentDetailEnergy = 'deep';
+    let editingClassId = null;
+    let selectedClassDays = [];
+    let selectedClassColor = '#4f98a3';
+    let isAddingTask = false;
+    let isBooting = true;
+    let theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+
+    let settings = {
+      userName: 'Student',
+      sleepTarget: 7.5,
+      targets: {
+        classes: 15,
+        recruiting: 8,
+        build: 10,
+        admin: 4,
+        body: 6
+      }
+    };
+
+    document.documentElement.setAttribute('data-theme', theme);
+
+    const $ = (selector, root = document) => root.querySelector(selector);
+    const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+
+    function bucketMeta(bucket) {
+      return BUCKETS.find(item => item.key === bucket) || BUCKETS[0];
+    }
+
+    function toMinutes(time) {
+      if (!time) return 0;
+      const [hh, mm] = String(time).slice(0, 5).split(':').map(Number);
+      return (hh * 60) + (mm || 0);
+    }
+
+    function toTime(total) {
+      const hh = Math.floor(total / 60);
+      const mm = total % 60;
+      return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+    }
+
+    function displayTime(time) {
+      const mins = typeof time === 'number' ? time : toMinutes(time);
+      const date = new Date();
+      date.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
+      return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+
+    function formatHours(minutes) {
+      const hours = minutes / 60;
+      return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(1)}h`;
+    }
+
+    function todayIndex() {
+      return (new Date().getDay() + 6) % 7;
+    }
+
+    function isoToday() {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+
+    function deadlineLabel(deadline) {
+      if (!deadline) return '';
+      const due = new Date(`${deadline}T00:00:00`);
+      const now = isoToday();
+      const diff = Math.round((due - now) / 86400000);
+      if (diff === 0) return 'Due today';
+      if (diff === 1) return 'Due tomorrow';
+      if (diff === 2) return 'Due in 2 days';
+      return '';
+    }
+
+    function normalizeTask(row) {
+      return {
+        id: row.id,
+        name: row.name || 'Untitled task',
+        bucket: row.bucket || 'classes',
+        estimated_minutes: Number(row.estimated_minutes) || 60,
+        deadline: row.deadline || null,
+        energy_type: row.energy_type || 'light',
+        is_collaboration: Boolean(row.is_collaboration),
+        collaborator_label: row.collaborator_label || '',
+        status: row.status || 'unscheduled',
+        scheduled_day: Number.isInteger(row.scheduled_day) ? row.scheduled_day : null,
+        scheduled_time: row.scheduled_time ? String(row.scheduled_time).slice(0, 5) : null,
+        user_id: row.user_id || currentUser?.id || null
+      };
+    }
+
+    function normalizeFixedBlock(row) {
+      return {
+        id: row.id,
+        label: row.label || 'Fixed block',
+        day_of_week: Number(row.day_of_week) || 0,
+        start_time: String(row.start_time || '09:00').slice(0, 5),
+        end_time: String(row.end_time || '10:00').slice(0, 5),
+        color: row.color || null,
+        source: row.source || 'fixed_blocks',
+        class_id: row.class_id || null,
+        user_id: row.user_id || currentUser?.id || null,
+        recurring: row.recurring !== false
+      };
+    }
+
+    function normalizeClassSchedule(row) {
+      return {
+        id: row.id,
+        name: row.name || 'Untitled class',
+        days: String(row.days || ''),
+        start_time: String(row.start_time || '09:00').slice(0, 5),
+        end_time: String(row.end_time || '09:50').slice(0, 5),
+        color: row.color || '#4f98a3',
+        user_id: row.user_id || currentUser?.id || null
+      };
+    }
+
+    function buildFixedBlocksWithClasses() {
+      const classBlocks = classSchedule.flatMap(item => item.days
+        .split(',')
+        .map(day => Number(day))
+        .filter(day => Number.isInteger(day) && day >= 0 && day <= 6)
+        .map(day => normalizeFixedBlock({
+          id: `${item.id}-${day}`,
+          label: item.name,
+          day_of_week: day,
+          start_time: item.start_time,
+          end_time: item.end_time,
+          recurring: true,
+          color: item.color,
+          source: 'class_schedule',
+          class_id: item.id,
+          user_id: item.user_id
+        })));
+      const mergedFixedBlocks = [...baseFixedBlocks, ...classBlocks];
+      console.log('Fixed blocks after merging class schedule:', mergedFixedBlocks.length, 'total blocks');
+      return mergedFixedBlocks;
+    }
+
+    function setSync(activeDelta) {
+      pendingRequests = Math.max(0, pendingRequests + activeDelta);
+      $('#syncIndicator').classList.toggle('active', pendingRequests > 0);
+    }
+
+    function describeSupabaseError(error) {
+      if (!error) return 'Unknown Supabase error';
+      if (typeof error === 'string') return error;
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        return `Could not reach ${SUPABASE_URL}. Check the Supabase project URL, whether the project is paused/deleted, and whether DNS, VPN, firewall, or an ad blocker is blocking supabase.co.`;
+      }
+      return error.message || error.details || error.hint || JSON.stringify(error);
+    }
+
+    function showSyncError(error) {
+      const errorEl = $('#syncError');
+      if (!errorEl) return;
+      const message = describeSupabaseError(error);
+      errorEl.textContent = `Supabase save failed: ${message}`;
+      errorEl.classList.add('show');
+      window.clearTimeout(syncErrorTimer);
+      syncErrorTimer = window.setTimeout(() => errorEl.classList.remove('show'), 9000);
+    }
+
+    async function trackedRequest(callback) {
+      setSync(1);
+      try {
+        const result = await callback();
+        if (result && result.error) throw result.error;
+        return result;
+      } catch (error) {
+        console.warn('Supabase request failed:', describeSupabaseError(error), error);
+        showSyncError(error);
+        return { error };
+      } finally {
+        setSync(-1);
+      }
+    }
+
+    function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const rawData = atob(base64);
+      return new Uint8Array([...rawData].map(c => c.charCodeAt(0)));
+    }
+
+    async function savePushSubscription(subscription) {
+      const json = subscription.toJSON();
+      const endpoint = json.endpoint;
+      const p256dh = json.keys.p256dh;
+      const auth = json.keys.auth;
+
+      const { error } = await supabase
+        .from('push_subscriptions')
+        .upsert({ endpoint, p256dh, auth }, { onConflict: 'endpoint' });
+
+      if (error) {
+        console.warn('Failed to save push subscription to Supabase:', error.message);
+      } else {
+        console.log('Push subscription saved to Supabase successfully');
+      }
+    }
+
+    async function subscribeToPush(registration) {
+      try {
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        });
+        console.log('Push subscription created:', subscription.endpoint);
+        return subscription;
+      } catch (err) {
+        console.warn('Push subscription failed:', err.message);
+        return null;
+      }
+    }
+
+    async function requestNotificationPermissionAndSubscribe() {
+      if (!('serviceWorker' in navigator) || !('Notification' in window)) return null;
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return null;
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await subscribeToPush(registration);
+      if (subscription) {
+        await savePushSubscription(subscription);
+        console.log('Push subscription active and saved');
+      }
+      return subscription;
+    }
+
+    async function syncGrantedPushSubscription() {
+      if (!('serviceWorker' in navigator) || !('Notification' in window) || Notification.permission !== 'granted') return;
+      const existingRegistration = await navigator.serviceWorker.getRegistration();
+      const reg = existingRegistration || await navigator.serviceWorker.ready;
+      const existing = await reg.pushManager.getSubscription();
+      if (existing) {
+        await savePushSubscription(existing);
+        console.log('Existing push subscription re-synced to Supabase');
+      } else {
+        const newSub = await subscribeToPush(reg);
+        if (newSub) await savePushSubscription(newSub);
+      }
+    }
+
+    window.requestHustlePlannerNotifications = requestNotificationPermissionAndSubscribe;
+
+    function registerPwaServiceWorker() {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/class-hustle-balancer/sw.js', { scope: '/class-hustle-balancer/' })
+          .then(reg => console.log('PWA service worker registered', reg.scope))
+          .catch(err => console.warn('Service worker registration failed:', err));
+      }
+    }
+
+    async function ensureCurrentUser() {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) {
+        currentUser = null;
+        currentSession = null;
+        updateAuthUI();
+        throw new Error('You are not signed in. Sign in again before saving.');
+      }
+      currentUser = data.user;
+      updateAuthUI();
+      return currentUser;
+    }
+
+    async function persistTask(task) {
+      if (task._pendingInsert) return Promise.resolve();
+      if (!currentUser) return Promise.resolve();
+      const user = await ensureCurrentUser().catch(error => {
+        showSyncError(error);
+        return null;
+      });
+      if (!user) return Promise.resolve();
+      task.user_id = user.id;
+      const payload = {
+        id: task.id,
+        user_id: user.id,
+        name: task.name,
+        bucket: task.bucket,
+        estimated_minutes: task.estimated_minutes,
+        deadline: task.deadline || null,
+        energy_type: task.energy_type,
+        is_collaboration: task.is_collaboration,
+        collaborator_label: task.is_collaboration ? (task.collaborator_label || null) : null,
+        status: task.status,
+        scheduled_day: task.scheduled_day,
+        scheduled_time: task.scheduled_time
+      };
+      return trackedRequest(() => supabase.from(TABLES.tasks).upsert(payload));
+    }
+
+    async function persistSchedule(changedTasks) {
+      if (!currentUser) return Promise.resolve();
+      const user = await ensureCurrentUser().catch(error => {
+        showSyncError(error);
+        return null;
+      });
+      if (!user) return Promise.resolve();
+      const syncableTasks = changedTasks.filter(task => !task._pendingInsert);
+      if (!syncableTasks.length) return Promise.resolve();
+      const payload = syncableTasks.map(task => ({
+        id: task.id,
+        user_id: user.id,
+        name: task.name,
+        bucket: task.bucket,
+        estimated_minutes: task.estimated_minutes,
+        deadline: task.deadline || null,
+        energy_type: task.energy_type,
+        is_collaboration: task.is_collaboration,
+        collaborator_label: task.is_collaboration ? (task.collaborator_label || null) : null,
+        status: task.status,
+        scheduled_day: task.scheduled_day,
+        scheduled_time: task.scheduled_time
+      }));
+      return trackedRequest(() => supabase.from(TABLES.tasks).upsert(payload));
+    }
+
+    async function deleteTaskRemote(id) {
+      if (!currentUser) return Promise.resolve();
+      return trackedRequest(() => supabase.from(TABLES.tasks).delete().eq('id', id).eq('user_id', currentUser.id));
+    }
+
+    async function persistClassScheduleInsert(item) {
+      if (!currentUser) return Promise.resolve();
+      const user = await ensureCurrentUser().catch(error => {
+        showSyncError(error);
+        return null;
+      });
+      if (!user) return Promise.resolve();
+      item.user_id = user.id;
+      const payload = {
+        id: item.id,
+        user_id: user.id,
+        name: item.name,
+        days: item.days,
+        start_time: item.start_time,
+        end_time: item.end_time,
+        color: item.color
+      };
+      return trackedRequest(async () => {
+        const { data, error } = await supabase.from(TABLES.classSchedule).insert(payload).select('*').single();
+        if (error) throw error;
+        const index = classSchedule.findIndex(entry => entry.id === item.id);
+        if (index >= 0 && data) {
+          classSchedule[index] = normalizeClassSchedule(data);
+          fixedBlocks = buildFixedBlocksWithClasses();
+          runScheduling({ mode: 'full' });
+          renderAll();
+        }
+        return { data, error: null };
+      });
+    }
+
+    async function persistClassScheduleUpdate(item) {
+      if (item._pendingInsert) return Promise.resolve();
+      if (!currentUser) return Promise.resolve();
+      const user = await ensureCurrentUser().catch(error => {
+        showSyncError(error);
+        return null;
+      });
+      if (!user) return Promise.resolve();
+      item.user_id = user.id;
+      const payload = {
+        user_id: user.id,
+        name: item.name,
+        days: item.days,
+        start_time: item.start_time,
+        end_time: item.end_time,
+        color: item.color
+      };
+      return trackedRequest(() => supabase.from(TABLES.classSchedule).update(payload).eq('id', item.id).eq('user_id', user.id));
+    }
+
+    function deleteClassScheduleRemote(id) {
+      if (!currentUser) return Promise.resolve();
+      return trackedRequest(() => supabase.from(TABLES.classSchedule).delete().eq('id', id).eq('user_id', currentUser.id));
+    }
+
+    async function loadData() {
+      if (!currentUser) return;
+      const [fixedResult, taskResult, classResult] = await Promise.all([
+        trackedRequest(() => supabase.from(TABLES.fixedBlocks).select('*').eq('user_id', currentUser.id).order('day_of_week', { ascending: true }).order('start_time', { ascending: true })),
+        trackedRequest(() => supabase.from(TABLES.tasks).select('*').eq('user_id', currentUser.id).order('deadline', { ascending: true, nullsFirst: false })),
+        trackedRequest(() => supabase.from(TABLES.classSchedule).select('*').eq('user_id', currentUser.id))
+      ]);
+
+      baseFixedBlocks = Array.isArray(fixedResult.data) ? fixedResult.data.map(normalizeFixedBlock) : [];
+      tasks = Array.isArray(taskResult.data) ? taskResult.data.map(normalizeTask) : [];
+      if (classResult.error) {
+        console.warn('class_schedule table may not exist yet — create it in Supabase with columns: id, name, days, start_time, end_time, color');
+      }
+      classSchedule = Array.isArray(classResult.data) ? classResult.data.map(normalizeClassSchedule) : [];
+      console.log('Class schedule loaded:', classSchedule.length, 'classes');
+      fixedBlocks = buildFixedBlocksWithClasses();
+      console.log('Step 2: Data loaded — tasks:', tasks.length, 'fixed blocks:', fixedBlocks.length);
+      isBooting = false;
+      runScheduling({ mode: 'full' });
+      renderAll();
+      syncGrantedPushSubscription();
+    }
+
+    function buildFreeBlocks(lockedTasks = []) {
+      const days = Array.from({ length: 7 }, (_, day) => [{
+        day,
+        start: START_MIN,
+        end: END_MIN,
+        cursor: START_MIN,
+        mode: 'light',
+        afterGym: false
+      }]);
+
+      const blockers = [];
+      fixedBlocks.forEach(block => {
+        blockers.push({
+          day: block.day_of_week,
+          start: toMinutes(block.start_time),
+          end: toMinutes(block.end_time),
+          label: block.label,
+          type: 'fixed'
+        });
+      });
+      lockedTasks.forEach(task => {
+        if (task.scheduled_day === null || !task.scheduled_time || task.status !== 'scheduled') return;
+        const start = toMinutes(task.scheduled_time);
+        blockers.push({
+          day: task.scheduled_day,
+          start,
+          end: start + task.estimated_minutes,
+          label: task.name,
+          type: 'task'
+        });
+      });
+
+      for (let day = 0; day < 7; day++) {
+        let ranges = [{ day, start: START_MIN, end: END_MIN }];
+        blockers
+          .filter(item => item.day === day)
+          .sort((a, b) => a.start - b.start)
+          .forEach(block => {
+            const next = [];
+            ranges.forEach(range => {
+              if (block.end <= range.start || block.start >= range.end) {
+                next.push(range);
+                return;
+              }
+              if (block.start > range.start) next.push({ day, start: range.start, end: block.start });
+              if (block.end < range.end) next.push({ day, start: block.end, end: range.end });
+            });
+            ranges = next;
+          });
+        days[day] = ranges
+          .filter(range => range.end > range.start)
+          .map(range => {
+            const afterGym = fixedBlocks.some(block => {
+              const label = String(block.label || '').toLowerCase();
+              return block.day_of_week === day && label.includes('gym') && Math.abs(toMinutes(block.end_time) - range.start) <= 30;
+            });
+            return {
+              ...range,
+              cursor: range.start,
+              mode: afterGym ? 'rest' : modeForStart(range.start),
+              afterGym
+            };
+          });
+      }
+      return days.flat();
+    }
+
+    function modeForStart(minutes) {
+      if (minutes < 12 * 60) return 'deep';
+      if (minutes < 18 * 60) return 'functional';
+      return 'light';
+    }
+
+    function taskFitsBlock(task, block) {
+      const remaining = block.end - block.cursor;
+      if (remaining < task.estimated_minutes) return false;
+      if (task.energy_type === 'deep') return block.mode === 'deep';
+      if (task.energy_type === 'light') return block.mode === 'light' || block.mode === 'functional';
+      if (task.energy_type === 'physical') return block.mode === 'rest' || block.afterGym || block.mode === 'light' || block.mode === 'functional' || block.mode === 'deep';
+      return true;
+    }
+
+    function sortedSchedulable(list) {
+      const energyRank = { deep: 0, physical: 1, light: 2 };
+      return [...list].sort((a, b) => {
+        const ad = a.deadline ? new Date(`${a.deadline}T00:00:00`).getTime() : Infinity;
+        const bd = b.deadline ? new Date(`${b.deadline}T00:00:00`).getTime() : Infinity;
+        if (ad !== bd) return ad - bd;
+        if (energyRank[a.energy_type] !== energyRank[b.energy_type]) return energyRank[a.energy_type] - energyRank[b.energy_type];
+        return b.estimated_minutes - a.estimated_minutes;
+      });
+    }
+
+    function snapshotTask(task) {
+      return `${task.status}|${task.scheduled_day}|${task.scheduled_time}`;
+    }
+
+    function runScheduling(options = { mode: 'full' }) {
+      fixedBlocks = buildFixedBlocksWithClasses();
+      const before = new Map(tasks.map(task => [task.id, snapshotTask(task)]));
+      const mode = options.mode || 'full';
+      let schedulable = [];
+      let locked = [];
+
+      if (mode === 'remaining') {
+        locked = tasks.filter(task => task.status === 'scheduled' && task.scheduled_day !== null && task.scheduled_time);
+        schedulable = tasks.filter(task => task.status === 'unscheduled');
+      } else if (mode === 'single') {
+        locked = tasks.filter(task => task.id !== options.taskId && task.status === 'scheduled' && task.scheduled_day !== null && task.scheduled_time);
+        schedulable = tasks.filter(task => task.id === options.taskId);
+        schedulable.forEach(task => {
+          task.status = 'unscheduled';
+          task.scheduled_day = null;
+          task.scheduled_time = null;
+        });
+      } else {
+        schedulable = tasks.filter(task => task.status === 'unscheduled' || task.status === 'scheduled');
+        schedulable.forEach(task => {
+          task.status = 'unscheduled';
+          task.scheduled_day = null;
+          task.scheduled_time = null;
+        });
+      }
+
+      const freeBlocks = buildFreeBlocks(locked).sort((a, b) => (a.day - b.day) || (a.start - b.start));
+      let placedCount = 0;
+      let unscheduledCount = 0;
+
+      sortedSchedulable(schedulable).forEach(task => {
+        const block = freeBlocks.find(candidate => taskFitsBlock(task, candidate));
+        if (block) {
+          task.scheduled_day = block.day;
+          task.scheduled_time = toTime(block.cursor);
+          task.status = 'scheduled';
+          block.cursor += task.estimated_minutes;
+          placedCount += 1;
+        } else {
+          task.status = 'unscheduled';
+          task.scheduled_day = null;
+          task.scheduled_time = null;
+          unscheduledCount += 1;
+        }
+      });
+
+      const changed = tasks.filter(task => before.get(task.id) !== snapshotTask(task));
+      if (changed.length && !isBooting) persistSchedule(changed);
+      console.log('Step 3: Scheduling algorithm ran — placed:', placedCount, 'unscheduled:', unscheduledCount);
+      updateCapacityBars();
+      return { placedCount, unscheduledCount, changed };
+    }
+
+    function renderAll() {
+      renderWeek();
+      renderInbox();
+      updateCapacityBars();
+      if (activeView === 'review') renderReview();
+      renderSettings();
+      updateNavCounts();
+      updateWarning();
+      refreshIcons();
+    }
+
+    function refreshIcons() {
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function renderWeek() {
+      const mount = $('#weekMount');
+      if (isBooting) return;
+      const todaysIndex = todayIndex();
+      const hasTasks = tasks.length > 0;
+      mount.innerHTML = `<div class="week-grid">${DAYS.map((day, index) => renderDayColumn(index, day, todaysIndex, hasTasks)).join('')}</div>`;
+      attachDragTargets();
+      console.log('Step 4: Week grid rendered');
+    }
+
+    function renderDayColumn(day, label, todaysIndex, hasTasks) {
+      const dayTasks = tasks.filter(task => task.status === 'scheduled' && task.scheduled_day === day && task.scheduled_time);
+      const dayBlocks = fixedBlocks.filter(block => block.day_of_week === day);
+      const cards = [
+        ...dayBlocks.map(renderFixedBlock),
+        ...dayTasks.map(renderTaskCard)
+      ].join('');
+      const slots = [];
+      for (let minutes = START_MIN; minutes <= END_MIN - 30; minutes += 30) {
+        const top = (minutes - START_MIN) * PX_PER_MIN;
+        slots.push(`<div class="slot" data-day="${day}" data-time="${toTime(minutes)}" style="top:${top}px"></div>`);
+      }
+      const hourLabels = [];
+      for (let minutes = START_MIN; minutes <= END_MIN; minutes += 60) {
+        hourLabels.push(`<div class="time-label" style="top:${(minutes - START_MIN) * PX_PER_MIN}px">${displayTime(minutes)}</div>`);
+      }
+      return `
+        <section class="day-column ${day === todaysIndex ? 'today' : ''}">
+          <div class="day-head"><span>${label}</span><span class="day-hours">${formatHours(dayTasks.reduce((sum, task) => sum + task.estimated_minutes, 0))}</span></div>
+          <div class="timeline" data-day="${day}">
+            ${slots.join('')}
+            ${hourLabels.join('')}
+            ${!hasTasks ? '<div class="empty-day">No tasks yet — add one below</div>' : ''}
+            ${cards}
+          </div>
+          <div class="unscheduled-zone" data-unscheduled-day="${day}">Unscheduled</div>
+        </section>
+      `;
+    }
+
+    function renderFixedBlock(block) {
+      const start = toMinutes(block.start_time);
+      const end = toMinutes(block.end_time);
+      const top = (start - START_MIN) * PX_PER_MIN;
+      const height = Math.max(34, (end - start) * PX_PER_MIN - 4);
+      return `
+        <article class="schedule-card fixed-card" style="top:${top}px;height:${height}px;${block.color ? `border-left-color:${block.color};` : ''}" aria-label="${escapeHtml(block.label)} fixed block">
+          <div class="card-title"><i data-lucide="lock" style="width:0.85rem;height:0.85rem;"></i> ${escapeHtml(block.label)}</div>
+          <div class="card-meta">${displayTime(block.start_time)} - ${displayTime(block.end_time)}</div>
+        </article>
+      `;
+    }
+
+    function renderTaskCard(task) {
+      const meta = bucketMeta(task.bucket);
+      const start = toMinutes(task.scheduled_time);
+      const top = (start - START_MIN) * PX_PER_MIN;
+      const height = Math.max(44, task.estimated_minutes * PX_PER_MIN - 4);
+      const due = deadlineLabel(task.deadline);
+      return `
+        <article class="schedule-card" draggable="true" data-task-id="${task.id}" style="--bucket-color:${meta.color};top:${top}px;height:${height}px;">
+          <div class="card-title">${escapeHtml(task.name)}</div>
+          <div class="card-meta">
+            <span class="bucket-badge"><span class="dot"></span>${meta.label}</span>
+            <span>${task.estimated_minutes} min</span>
+            ${due ? `<span class="deadline-badge">${due}</span>` : ''}
+            ${task.is_collaboration ? '<i data-lucide="users" style="width:0.9rem;height:0.9rem;"></i>' : ''}
+          </div>
+        </article>
+      `;
+    }
+
+    function attachDragTargets() {
+      $$('.schedule-card[data-task-id]').forEach(card => {
+        card.addEventListener('click', () => openDetail(card.dataset.taskId));
+        card.addEventListener('dragstart', event => {
+          draggedTaskId = card.dataset.taskId;
+          event.dataTransfer.effectAllowed = 'move';
+          event.dataTransfer.setData('text/plain', draggedTaskId);
+        });
+        card.addEventListener('dragend', () => {
+          draggedTaskId = null;
+          $$('.drag-over').forEach(item => item.classList.remove('drag-over'));
+        });
+      });
+
+      $$('.slot, .unscheduled-zone').forEach(target => {
+        target.addEventListener('dragover', event => {
+          if (!draggedTaskId) return;
+          event.preventDefault();
+          target.classList.add('drag-over');
+        });
+        target.addEventListener('dragleave', () => target.classList.remove('drag-over'));
+        target.addEventListener('drop', event => {
+          event.preventDefault();
+          target.classList.remove('drag-over');
+          const id = event.dataTransfer.getData('text/plain') || draggedTaskId;
+          if (!id) return;
+          if (target.classList.contains('unscheduled-zone')) {
+            moveTaskToUnscheduled(id);
+          } else {
+            moveTaskToSlot(id, Number(target.dataset.day), target.dataset.time);
+          }
+        });
+      });
+    }
+
+    function moveTaskToSlot(id, day, time) {
+      const task = tasks.find(item => item.id === id);
+      if (!task) return;
+      task.scheduled_day = day;
+      task.scheduled_time = time;
+      task.status = 'scheduled';
+      persistTask(task);
+      runScheduling({ mode: 'remaining' });
+      renderAll();
+    }
+
+    function moveTaskToUnscheduled(id) {
+      const task = tasks.find(item => item.id === id);
+      if (!task) return;
+      task.status = 'unscheduled';
+      task.scheduled_day = null;
+      task.scheduled_time = null;
+      persistTask(task);
+      renderAll();
+    }
+
+    function renderInbox() {
+      const mount = $('#inboxMount');
+      const grouped = BUCKETS.map(bucket => ({
+        ...bucket,
+        tasks: tasks.filter(task => task.bucket === bucket.key)
+      })).filter(group => group.tasks.length);
+
+      if (!tasks.length || tasks.every(task => task.status === 'scheduled' || task.status === 'done')) {
+        mount.innerHTML = `
+          <div class="empty-state">
+            <i data-lucide="check-circle" style="width:2.4rem;height:2.4rem;color:var(--color-success);"></i>
+            <strong>All tasks are scheduled. Nice work.</strong>
+          </div>
+        `;
+      } else {
+        mount.innerHTML = grouped.map(group => `
+          <section class="bucket-group" style="--bucket-color:${group.color}">
+            <div class="bucket-header"><span>${group.label}</span><span>${group.tasks.length}</span></div>
+            ${group.tasks.map(renderInboxRow).join('')}
+          </section>
+        `).join('');
+      }
+
+      $$('.task-row').forEach(row => row.addEventListener('click', () => openDetail(row.dataset.taskId)));
+      console.log('Step 5: Inbox rendered');
+    }
+
+    function renderInboxRow(task) {
+      const meta = bucketMeta(task.bucket);
+      return `
+        <button class="task-row ${task.status === 'unscheduled' ? 'unscheduled' : ''}" data-task-id="${task.id}" style="--bucket-color:${meta.color}">
+          <span class="task-row-name">${escapeHtml(task.name)}</span>
+          <span class="muted hide-sm">${task.deadline || 'No deadline'}</span>
+          <span class="muted">${task.estimated_minutes}m</span>
+          <span class="status-badge ${task.status} hide-sm">${task.status}</span>
+          <i data-lucide="square-pen"></i>
+        </button>
+      `;
+    }
+
+    function updateCapacityBars() {
+      const mount = $('#capacityBars');
+      if (!mount) return;
+      const totals = Object.fromEntries(BUCKETS.map(bucket => [bucket.key, 0]));
+      tasks.forEach(task => {
+        if (task.status === 'scheduled' || task.status === 'done') totals[task.bucket] += task.estimated_minutes;
+      });
+      overloadBuckets = [];
+      mount.innerHTML = BUCKETS.map(bucket => {
+        const scheduledHours = totals[bucket.key] / 60;
+        const target = Number(settings.targets[bucket.key]) || 0;
+        const pct = target > 0 ? Math.min(140, (scheduledHours / target) * 100) : 0;
+        if (target > 0 && scheduledHours > target * 1.2) overloadBuckets.push(bucket.label);
+        return `
+          <div class="capacity-row">
+            <div class="capacity-text"><span>${bucket.label}</span><span>${scheduledHours.toFixed(1)}h / ${target}h</span></div>
+            <div class="progress-track"><div class="progress-fill" style="background:${bucket.color};width:${pct}%"></div></div>
+          </div>
+        `;
+      }).join('');
+      console.log('Step 6: Capacity bars updated');
+      updateWarning();
+    }
+
+    function updateWarning() {
+      const banner = $('#warningBanner');
+      if (!banner) return;
+      const shouldShow = overloadBuckets.length > 0 && !warningDismissed;
+      $('#warningText').textContent = shouldShow ? `Heads up: ${overloadBuckets.join(', ')} ${overloadBuckets.length === 1 ? 'is' : 'are'} over your weekly target.` : '';
+      banner.classList.toggle('show', shouldShow);
+    }
+
+    function updateNavCounts() {
+      const count = tasks.filter(task => task.status === 'unscheduled').length;
+      $('#inboxCount').textContent = String(count);
+    }
+
+    function renderReview() {
+      const planned = BUCKETS.map(bucket => tasks.filter(task => task.bucket === bucket.key && (task.status === 'scheduled' || task.status === 'done')).length);
+      const done = BUCKETS.map(bucket => tasks.filter(task => task.bucket === bucket.key && task.status === 'done').length);
+      const ctx = $('#reviewChart');
+      if (ctx && window.Chart) {
+        if (reviewChart) reviewChart.destroy();
+        reviewChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: BUCKETS.map(bucket => bucket.label),
+            datasets: [
+              { label: 'Planned', data: planned, backgroundColor: BUCKETS.map(bucket => `${bucket.color}55`), borderColor: BUCKETS.map(bucket => bucket.color), borderWidth: 1 },
+              { label: 'Completed', data: done, backgroundColor: BUCKETS.map(bucket => bucket.color) }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--color-text') } } },
+            scales: {
+              x: { ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--color-text-muted') }, grid: { display: false } },
+              y: { beginAtZero: true, ticks: { precision: 0, color: getComputedStyle(document.documentElement).getPropertyValue('--color-text-muted') }, grid: { color: getComputedStyle(document.documentElement).getPropertyValue('--color-border') } }
+            }
+          }
+        });
+      }
+      $('#summaryTable').innerHTML = `
+        <thead><tr><th>Bucket</th><th>Tasks planned</th><th>Tasks done</th><th>Completion</th></tr></thead>
+        <tbody>
+          ${BUCKETS.map((bucket, index) => {
+            const pct = planned[index] ? Math.round((done[index] / planned[index]) * 100) : 0;
+            return `<tr><td><span class="bucket-badge" style="--bucket-color:${bucket.color}"><span class="dot"></span>${bucket.label}</span></td><td>${planned[index]}</td><td>${done[index]}</td><td>${pct}%</td></tr>`;
+          }).join('')}
+        </tbody>
+      `;
+    }
+
+    function renderSettings() {
+      $('#userName').value = settings.userName;
+      $('#sleepTarget').value = settings.sleepTarget;
+      $('#targetClasses').value = settings.targets.classes;
+      $('#targetRecruiting').value = settings.targets.recruiting;
+      $('#targetBuild').value = settings.targets.build;
+      $('#targetAdmin').value = settings.targets.admin;
+      $('#targetBody').value = settings.targets.body;
+      renderClassScheduleList();
+      renderClassFormControls();
+    }
+
+    function setAuthMessage(message, isError = false) {
+      const el = $('#authMessage');
+      if (!el) return;
+      el.textContent = message || '';
+      el.classList.toggle('error', Boolean(isError));
+    }
+
+    function updateAuthUI() {
+      const signedIn = Boolean(currentUser);
+      $('#authGate').classList.toggle('open', !signedIn);
+      document.body.classList.toggle('auth-open', !signedIn);
+      $('#userChip').classList.toggle('show', signedIn);
+      $('#logoutButton').style.display = signedIn ? 'inline-flex' : 'none';
+      $('#userEmail').textContent = currentUser?.email || '';
+      refreshIcons();
+    }
+
+    function resetAppData() {
+      tasks = [];
+      baseFixedBlocks = [];
+      fixedBlocks = [];
+      classSchedule = [];
+      selectedTaskId = null;
+      closeDetail();
+      closeClassForm();
+      renderAll();
+    }
+
+    async function signInWithPassword(event) {
+      event.preventDefault();
+      const email = $('#authEmail').value.trim();
+      const password = $('#authPassword').value;
+      if (!email || !password) {
+        setAuthMessage('Enter your email and password.', true);
+        return;
+      }
+      setAuthMessage('Signing in...');
+      const { data, error } = await trackedRequest(() => supabase.auth.signInWithPassword({ email, password }));
+      if (error) {
+        setAuthMessage(describeSupabaseError(error), true);
+        return;
+      }
+      currentSession = data.session || null;
+      currentUser = data.user;
+      setAuthMessage('');
+      updateAuthUI();
+      isBooting = false;
+      await loadData();
+    }
+
+    async function signUpWithPassword() {
+      const email = $('#authEmail').value.trim();
+      const password = $('#authPassword').value;
+      if (!email || !password) {
+        setAuthMessage('Enter an email and password first.', true);
+        return;
+      }
+      setAuthMessage('Creating account...');
+      const { data, error } = await trackedRequest(() => supabase.auth.signUp({ email, password }));
+      if (error) {
+        setAuthMessage(describeSupabaseError(error), true);
+        return;
+      }
+      if (data.session && data.user) {
+        currentSession = data.session;
+        currentUser = data.user;
+        setAuthMessage('');
+        updateAuthUI();
+        isBooting = false;
+        await loadData();
+      } else {
+        setAuthMessage('Account created. Check your email if confirmation is enabled, then sign in.');
+      }
+    }
+
+    async function logOut() {
+      await trackedRequest(() => supabase.auth.signOut());
+      currentUser = null;
+      currentSession = null;
+      resetAppData();
+      updateAuthUI();
+      setAuthMessage('Signed out.');
+    }
+
+    async function initializeAuth() {
+      const { data } = await supabase.auth.getSession();
+      currentSession = data.session || null;
+      currentUser = data.session?.user || null;
+      updateAuthUI();
+      if (currentUser) {
+        isBooting = false;
+        await loadData();
+      }
+    }
+
+    function renderClassScheduleList() {
+      const mount = $('#classScheduleList');
+      if (!mount) return;
+      if (!classSchedule.length) {
+        mount.innerHTML = `
+          <div class="empty-state" style="min-height:180px;">
+            <i data-lucide="calendar" style="width:2.2rem;height:2.2rem;color:var(--color-text-muted);"></i>
+            <strong>No classes added yet.</strong>
+          </div>
+        `;
+        return;
+      }
+      mount.innerHTML = classSchedule.map(item => `
+        <div class="class-row" style="--class-color:${item.color}">
+          <div class="class-row-main">
+            <div class="class-name">${escapeHtml(item.name)}</div>
+            <div class="class-meta">${displayClassDays(item.days)} · ${displayTime(item.start_time)} - ${displayTime(item.end_time)}</div>
+          </div>
+          <span class="color-swatch" style="--swatch-color:${item.color}" aria-hidden="true"></span>
+          <div class="class-actions">
+            <button class="icon-button" type="button" data-edit-class="${item.id}" aria-label="Edit ${escapeHtml(item.name)}" title="Edit class"><i data-lucide="pencil"></i></button>
+            <button class="icon-button" type="button" data-delete-class="${item.id}" aria-label="Delete ${escapeHtml(item.name)}" title="Delete class"><i data-lucide="trash-2"></i></button>
+          </div>
+        </div>
+      `).join('');
+      $$('[data-edit-class]', mount).forEach(btn => btn.addEventListener('click', () => openClassForm(btn.dataset.editClass)));
+      $$('[data-delete-class]', mount).forEach(btn => btn.addEventListener('click', () => deleteClassSchedule(btn.dataset.deleteClass)));
+    }
+
+    function renderClassFormControls() {
+      const dayMount = $('#classDayToggles');
+      const colorMount = $('#classColorSwatches');
+      if (!dayMount || !colorMount) return;
+      dayMount.innerHTML = DAYS.map((day, index) => `
+        <button class="day-toggle ${selectedClassDays.includes(index) ? 'active' : ''}" type="button" data-class-day="${index}">${day}</button>
+      `).join('');
+      colorMount.innerHTML = CLASS_COLORS.map(color => `
+        <button class="color-swatch ${selectedClassColor === color ? 'active' : ''}" type="button" style="--swatch-color:${color}" data-class-color="${color}" aria-label="Use ${color}"></button>
+      `).join('');
+      $$('[data-class-day]', dayMount).forEach(btn => btn.addEventListener('click', () => {
+        const day = Number(btn.dataset.classDay);
+        selectedClassDays = selectedClassDays.includes(day)
+          ? selectedClassDays.filter(item => item !== day)
+          : [...selectedClassDays, day].sort((a, b) => a - b);
+        renderClassFormControls();
+      }));
+      $$('[data-class-color]', colorMount).forEach(btn => btn.addEventListener('click', () => {
+        selectedClassColor = btn.dataset.classColor;
+        renderClassFormControls();
+      }));
+    }
+
+    function displayClassDays(days) {
+      return String(days || '')
+        .split(',')
+        .map(day => DAYS[Number(day)])
+        .filter(Boolean)
+        .join(', ');
+    }
+
+    function openClassForm(id = null) {
+      const item = classSchedule.find(entry => entry.id === id);
+      editingClassId = item ? item.id : null;
+      selectedClassDays = item ? item.days.split(',').map(Number).filter(Number.isInteger) : [];
+      selectedClassColor = item ? item.color : '#4f98a3';
+      $('#classScheduleId').value = editingClassId || '';
+      $('#className').value = item ? item.name : '';
+      $('#classStartTime').value = item ? item.start_time : '';
+      $('#classEndTime').value = item ? item.end_time : '';
+      clearClassFormErrors();
+      $('#classScheduleForm').classList.add('open');
+      renderClassFormControls();
+      $('#className').focus();
+      refreshIcons();
+    }
+
+    function closeClassForm() {
+      editingClassId = null;
+      selectedClassDays = [];
+      selectedClassColor = '#4f98a3';
+      $('#classScheduleForm').reset();
+      $('#classScheduleId').value = '';
+      clearClassFormErrors();
+      $('#classScheduleForm').classList.remove('open');
+      renderClassFormControls();
+    }
+
+    function clearClassFormErrors() {
+      ['classNameError', 'classDaysError', 'classStartError', 'classEndError'].forEach(id => {
+        const el = $(`#${id}`);
+        if (el) el.textContent = '';
+      });
+    }
+
+    function classFormData() {
+      clearClassFormErrors();
+      const name = $('#className').value.trim();
+      const startTime = $('#classStartTime').value;
+      const endTime = $('#classEndTime').value;
+      let valid = true;
+      if (!name) {
+        $('#classNameError').textContent = 'Class name is required.';
+        valid = false;
+      }
+      if (!selectedClassDays.length) {
+        $('#classDaysError').textContent = 'Choose at least one day.';
+        valid = false;
+      }
+      if (!startTime) {
+        $('#classStartError').textContent = 'Start time is required.';
+        valid = false;
+      }
+      if (!endTime) {
+        $('#classEndError').textContent = 'End time is required.';
+        valid = false;
+      } else if (startTime && toMinutes(endTime) <= toMinutes(startTime)) {
+        $('#classEndError').textContent = 'End time must be after start time.';
+        valid = false;
+      }
+      if (!valid) return null;
+      return {
+        name,
+        days: selectedClassDays.join(','),
+        start_time: startTime,
+        end_time: endTime,
+        color: selectedClassColor || '#4f98a3'
+      };
+    }
+
+    function saveClassSchedule(event) {
+      event.preventDefault();
+      if (!currentUser) {
+        showSyncError('Sign in before saving a class.');
+        setAuthMessage('Sign in before saving classes.', true);
+        updateAuthUI();
+        return;
+      }
+      const data = classFormData();
+      if (!data) return;
+      if (editingClassId) {
+        const item = classSchedule.find(entry => entry.id === editingClassId);
+        if (!item) return;
+        Object.assign(item, data);
+        persistClassScheduleUpdate(item);
+      } else {
+        const item = { ...data, id: crypto.randomUUID(), user_id: currentUser?.id || null, _pendingInsert: true };
+        classSchedule.push(item);
+        persistClassScheduleInsert(item);
+      }
+      fixedBlocks = buildFixedBlocksWithClasses();
+      closeClassForm();
+      runScheduling({ mode: 'full' });
+      renderAll();
+    }
+
+    function deleteClassSchedule(id) {
+      const item = classSchedule.find(entry => entry.id === id);
+      classSchedule = classSchedule.filter(entry => entry.id !== id);
+      fixedBlocks = buildFixedBlocksWithClasses();
+      if (editingClassId === id) closeClassForm();
+      if (item && !item._pendingInsert) deleteClassScheduleRemote(id);
+      runScheduling({ mode: 'full' });
+      renderAll();
+    }
+
+    async function handleAddTaskSubmit(event) {
+      if (event) event.preventDefault();
+      if (isAddingTask) return;
+      const form = $('#addTaskForm');
+      $('#addTaskError').textContent = '';
+      if (!form.reportValidity()) return;
+      setAddTaskBusy(true);
+
+      let user = null;
+      try {
+        user = await ensureCurrentUser();
+      } catch (error) {
+        const message = describeSupabaseError(error);
+        $('#addTaskError').textContent = message;
+        showSyncError(error);
+        setAddTaskBusy(false);
+        return;
+      }
+
+      const data = new FormData(form);
+      const draft = {
+        user_id: user.id,
+        name: String(data.get('name') || '').trim(),
+        bucket: String(data.get('bucket') || 'classes'),
+        estimated_minutes: Math.max(15, Number(data.get('estimated_minutes')) || 60),
+        deadline: String(data.get('deadline') || '') || null,
+        energy_type: currentAddEnergy,
+        is_collaboration: $('#addCollab').checked,
+        collaborator_label: $('#addCollab').checked ? String(data.get('collaborator_label') || '').trim() : null,
+        status: 'unscheduled',
+        scheduled_day: null,
+        scheduled_time: null
+      };
+      if (!draft.name) {
+        $('#addTaskError').textContent = 'Task name is required.';
+        setAddTaskBusy(false);
+        return;
+      }
+
+      const tempId = crypto.randomUUID();
+      const insertResult = await trackedRequest(() =>
+        supabase.from(TABLES.tasks).insert({ ...draft, id: tempId, user_id: user.id }).select('*').single()
+      );
+      if (insertResult.error) {
+        $('#addTaskError').textContent = describeSupabaseError(insertResult.error);
+        setAddTaskBusy(false);
+        return;
+      }
+
+      const insertedTask = normalizeTask(insertResult.data || { ...draft, id: tempId });
+      tasks.push(insertedTask);
+      closeAddModal();
+      runScheduling({ mode: 'full' });
+      renderAll();
+      persistTask(tasks.find(task => task.id === insertedTask.id) || insertedTask);
+    }
+
+    function setView(view) {
+      activeView = view;
+      const titles = {
+        weekly: ['Class + Hustle Time Balancer', 'A weekly command center for classes, recruiting, building, admin, and training.'],
+        inbox: ['Task Inbox', 'Keep every commitment visible before it hits the calendar.'],
+        review: ['Review', 'Compare planned momentum with finished work by bucket.'],
+        settings: ['Settings', 'Tune weekly targets without storing anything in browser storage.']
+      };
+      $$('.view').forEach(el => el.classList.remove('active'));
+      $(`#${view}View`).classList.add('active');
+      $$('.nav-link, .bottom-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.viewTarget === view));
+      $('#viewTitle').textContent = titles[view][0];
+      $('#viewSubtitle').textContent = titles[view][1];
+      if (view === 'review') renderReview();
+      refreshIcons();
+    }
+
+    function populateSelects() {
+      const bucketOptions = BUCKETS.map(bucket => `<option value="${bucket.key}">${bucket.label}</option>`).join('');
+      $('#addBucket').innerHTML = bucketOptions;
+      $('#detailBucket').innerHTML = bucketOptions;
+      renderEnergyToggles($('#addEnergy'), currentAddEnergy, value => currentAddEnergy = value);
+      renderEnergyToggles($('#detailEnergy'), currentDetailEnergy, value => {
+        currentDetailEnergy = value;
+        const task = selectedTask();
+        if (task) updateTask(task.id, { energy_type: value }, true);
+      });
+    }
+
+    function renderEnergyToggles(container, value, onPick) {
+      container.innerHTML = ENERGY_TYPES.map(type => `<button class="toggle-pill ${type === value ? 'active' : ''}" type="button" data-energy="${type}">${titleCase(type)}</button>`).join('');
+      $$('button', container).forEach(btn => btn.addEventListener('click', () => {
+        onPick(btn.dataset.energy);
+        renderEnergyToggles(container, btn.dataset.energy, onPick);
+        refreshIcons();
+      }));
+    }
+
+    function openAddModal() {
+      if (!currentUser) {
+        setAuthMessage('Sign in before adding tasks.', true);
+        updateAuthUI();
+        return;
+      }
+      $('#addTaskError').textContent = '';
+      setAddTaskBusy(false);
+      $('#addModal').classList.add('open');
+      $('#addName').focus();
+    }
+
+    function closeAddModal() {
+      $('#addModal').classList.remove('open');
+      $('#addTaskForm').reset();
+      $('#addTaskError').textContent = '';
+      setAddTaskBusy(false);
+      currentAddEnergy = 'deep';
+      renderEnergyToggles($('#addEnergy'), currentAddEnergy, value => currentAddEnergy = value);
+      $('#addCollabField').style.display = 'none';
+    }
+
+    function setAddTaskBusy(isBusy) {
+      isAddingTask = isBusy;
+      const button = $('#submitAddTask');
+      if (!button) return;
+      button.disabled = isBusy;
+      button.innerHTML = isBusy ? '<div class="spinner"></div>Saving' : '<i data-lucide="plus"></i>Add Task';
+      refreshIcons();
+    }
+
+    function openDetail(id) {
+      selectedTaskId = id;
+      const task = selectedTask();
+      if (!task) return;
+      currentDetailEnergy = task.energy_type;
+      $('#detailName').value = task.name;
+      $('#detailBucket').value = task.bucket;
+      $('#detailMinutes').value = task.estimated_minutes;
+      $('#detailDeadline').value = task.deadline || '';
+      $('#detailCollab').checked = task.is_collaboration;
+      $('#detailCollabLabel').value = task.collaborator_label || '';
+      $('#detailCollabField').style.display = task.is_collaboration ? 'grid' : 'none';
+      $('#detailStatus').value = task.status;
+      renderEnergyToggles($('#detailEnergy'), currentDetailEnergy, value => {
+        currentDetailEnergy = value;
+        updateTask(id, { energy_type: value }, true);
+      });
+      $('#detailPanel').classList.add('open');
+      refreshIcons();
+    }
+
+    function closeDetail() {
+      selectedTaskId = null;
+      $('#detailPanel').classList.remove('open');
+    }
+
+    function selectedTask() {
+      return tasks.find(task => task.id === selectedTaskId);
+    }
+
+    function updateTask(id, patch, rerun = false) {
+      const task = tasks.find(item => item.id === id);
+      if (!task) return;
+      Object.assign(task, patch);
+      if (task.status === 'unscheduled') {
+        task.scheduled_day = null;
+        task.scheduled_time = null;
+      }
+      if (rerun) runScheduling({ mode: 'full' });
+      persistTask(task);
+      renderAll();
+      if (selectedTaskId === id) openDetail(id);
+    }
+
+    function findBestSlotForSelected() {
+      const task = selectedTask();
+      if (!task) return;
+      runScheduling({ mode: 'single', taskId: task.id });
+      persistTask(task);
+      renderAll();
+      openDetail(task.id);
+    }
+
+    function titleCase(text) {
+      return String(text).charAt(0).toUpperCase() + String(text).slice(1);
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function bindEvents() {
+      $('#themeToggle').addEventListener('click', () => {
+        theme = theme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+        $('#themeToggle').innerHTML = `<i data-lucide="${theme === 'dark' ? 'moon' : 'sun'}"></i>`;
+        renderReview();
+        refreshIcons();
+      });
+
+      $('#authForm').addEventListener('submit', signInWithPassword);
+      $('#signUpButton').addEventListener('click', signUpWithPassword);
+      $('#logoutButton').addEventListener('click', logOut);
+      $$('.nav-link, .bottom-tab').forEach(btn => btn.addEventListener('click', () => setView(btn.dataset.viewTarget)));
+      $('#openAddTask').addEventListener('click', openAddModal);
+      $('#mobileAddTask').addEventListener('click', openAddModal);
+      $('#closeAddModal').addEventListener('click', closeAddModal);
+      $('#cancelAddTask').addEventListener('click', closeAddModal);
+      $('#addModal').addEventListener('click', event => {
+        if (event.target.id === 'addModal') closeAddModal();
+      });
+      $('#addCollab').addEventListener('change', event => {
+        $('#addCollabField').style.display = event.target.checked ? 'grid' : 'none';
+      });
+      $('#dismissWarning').addEventListener('click', () => {
+        warningDismissed = true;
+        updateWarning();
+      });
+      $('#closeDetail').addEventListener('click', closeDetail);
+      $('#findBestSlot').addEventListener('click', findBestSlotForSelected);
+      $('#deleteTask').addEventListener('click', () => {
+        const task = selectedTask();
+        if (!task) return;
+        tasks = tasks.filter(item => item.id !== task.id);
+        deleteTaskRemote(task.id);
+        closeDetail();
+        runScheduling({ mode: 'full' });
+        renderAll();
+      });
+
+      $('#detailName').addEventListener('blur', event => {
+        if (selectedTaskId) updateTask(selectedTaskId, { name: event.target.value.trim() || 'Untitled task' }, false);
+      });
+      $('#detailBucket').addEventListener('change', event => {
+        if (selectedTaskId) updateTask(selectedTaskId, { bucket: event.target.value }, true);
+      });
+      $('#detailMinutes').addEventListener('change', event => {
+        if (selectedTaskId) updateTask(selectedTaskId, { estimated_minutes: Math.max(15, Number(event.target.value) || 15) }, true);
+      });
+      $('#detailDeadline').addEventListener('change', event => {
+        if (selectedTaskId) updateTask(selectedTaskId, { deadline: event.target.value || null }, true);
+      });
+      $('#detailCollab').addEventListener('change', event => {
+        $('#detailCollabField').style.display = event.target.checked ? 'grid' : 'none';
+        if (selectedTaskId) updateTask(selectedTaskId, { is_collaboration: event.target.checked }, false);
+      });
+      $('#detailCollabLabel').addEventListener('blur', event => {
+        if (selectedTaskId) updateTask(selectedTaskId, { collaborator_label: event.target.value.trim() }, false);
+      });
+      $('#detailStatus').addEventListener('change', event => {
+        const patch = { status: event.target.value };
+        if (event.target.value === 'unscheduled' || event.target.value === 'deferred') {
+          patch.scheduled_day = null;
+          patch.scheduled_time = null;
+        }
+        updateTask(selectedTaskId, patch, event.target.value === 'scheduled');
+      });
+
+      $('#settingsForm').addEventListener('submit', event => {
+        event.preventDefault();
+        const data = new FormData(event.currentTarget);
+        settings = {
+          userName: String(data.get('userName') || 'Student'),
+          sleepTarget: Number(data.get('sleepTarget')) || 0,
+          targets: {
+            classes: Number(data.get('classes')) || 0,
+            recruiting: Number(data.get('recruiting')) || 0,
+            build: Number(data.get('build')) || 0,
+            admin: Number(data.get('admin')) || 0,
+            body: Number(data.get('body')) || 0
+          }
+        };
+        warningDismissed = false;
+        updateCapacityBars();
+      });
+      $('#openClassForm').addEventListener('click', () => openClassForm());
+      $('#cancelClassForm').addEventListener('click', closeClassForm);
+      $('#classScheduleForm').addEventListener('submit', saveClassSchedule);
+      $('#addTaskForm').addEventListener('submit', handleAddTaskSubmit);
+      $('#submitAddTask').addEventListener('click', handleAddTaskSubmit);
+    }
+
+    async function init() {
+      $('#themeToggle').innerHTML = `<i data-lucide="${theme === 'dark' ? 'moon' : 'sun'}"></i>`;
+      populateSelects();
+      bindEvents();
+      renderSettings();
+      refreshIcons();
+      await initializeAuth();
+      registerPwaServiceWorker();
+    }
+
+    init();
+    })();
+  </script>
+</body>
+</html>

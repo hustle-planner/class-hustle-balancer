@@ -1,0 +1,17 @@
+{
+  "name": "Class + Hustle Time Balancer",
+  "short_name": "Hustle Planner",
+  "description": "Weekly scheduling tool for classes, recruiting, projects, business, and training.",
+  "display": "standalone",
+  "start_url": "/class-hustle-balancer/",
+  "scope": "/class-hustle-balancer/",
+  "theme_color": "#01696f",
+  "background_color": "#f7f6f2",
+  "id": "/class-hustle-balancer/?homescreen=1",
+  "icons": [
+    { "src": "/class-hustle-balancer/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/class-hustle-balancer/icon-256x256.png", "sizes": "256x256", "type": "image/png" },
+    { "src": "/class-hustle-balancer/icon-384x384.png", "sizes": "384x384", "type": "image/png" },
+    { "src": "/class-hustle-balancer/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
