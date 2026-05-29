@@ -533,13 +533,7 @@
       height: calc(100vh - 238px);
       min-height: 560px;
       overflow: hidden;
-      background:
-        repeating-linear-gradient(
-          to bottom,
-          transparent 0,
-          transparent calc(var(--hour-height, 32px) - 1px),
-          color-mix(in srgb, var(--color-border) 46%, transparent) var(--hour-height, 32px)
-        );
+      background: transparent;
     }
 
     .slot {
@@ -566,6 +560,15 @@
       font-variant-numeric: tabular-nums;
       pointer-events: none;
       transform: translateY(-50%);
+    }
+
+    .time-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: color-mix(in srgb, var(--color-border) 46%, transparent);
+      pointer-events: none;
     }
 
     .schedule-card {
@@ -3033,14 +3036,18 @@
         slots.push(`<div class="slot" data-day="${day}" data-time="${toTime(minutes)}" style="top:${top}px;height:${Math.max(12, 30 * scale)}px"></div>`);
       }
       const hourLabels = [];
+      const hourLines = [];
       for (let minutes = START_MIN; minutes <= END_MIN; minutes += 60) {
-        hourLabels.push(`<div class="time-label" style="top:${(minutes - START_MIN) * scale}px">${displayTime(minutes)}</div>`);
+        const top = Math.round((minutes - START_MIN) * scale);
+        hourLines.push(`<div class="time-line" style="top:${top}px"></div>`);
+        hourLabels.push(`<div class="time-label" style="top:${top}px">${displayTime(minutes)}</div>`);
       }
       return `
         <section class="day-column ${day === todaysIndex ? 'today' : ''} ${day === selectedMobileDay ? 'mobile-selected-day' : ''}" data-day-column="${day}">
           <div class="day-head"><span>${label}</span><span class="day-hours">${formatHours(dayTasks.reduce((sum, task) => sum + task.estimated_minutes, 0))}</span></div>
-          <div class="timeline" data-day="${day}" style="--hour-height:${60 * scale}px;height:${height}px">
+          <div class="timeline" data-day="${day}" style="height:${height}px">
             ${slots.join('')}
+            ${hourLines.join('')}
             ${hourLabels.join('')}
             ${!hasTasks ? '<div class="empty-day">No tasks yet — add one below</div>' : ''}
             ${cards}
